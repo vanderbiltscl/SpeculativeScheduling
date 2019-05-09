@@ -1,251 +1,123 @@
 import Workload
-import math
 
 
-class RequestSequence():
+class ScenarioInfo():
+    def __init__(self, scenario_name, prev_entries):
+        self.scenario_name = scenario_name
+        self.prev_instances = prev_entries
 
-    def __init__(self, distribution, discret_samples=100):
+    def set_procs_request_method(self, wd, procs):
+        wd.set_processing_units(distribution=Workload.ConstantDistr(procs))
 
-        self._a = distribution.get_low_bound()
-        self._b = distribution.get_up_bound()
-        self._n = discret_samples
-        self._delta = float((self._b - self._a) / self._n)
+    def set_procs_request_method_truncnormal(self, wd, procs):
+        wd.set_processing_units(distribution=Workload.TruncNormalDistr(
+            1, procs, int(procs/2), 2))
 
-        self.CDF_func = distribution.CDF_func
+    def set_procs_request_method_half(self, wd, procs):
+        wd.set_processing_units(distribution=Workload.ConstantDistr(
+            int(procs/2)))
 
-        self._E = {}
-        self._request_sequence = []
+    def req_procs(self, walltimes):
+        distr = Workload.BetaDistr(2, 2)
+        sequence = distr.random_sample(len(walltimes))
+        return [max(1, int(i*10)) for i in sequence]
 
-    def compute_F(self, i):
-        vi = (self._a + self._delta * i)
-        fi = self.CDF_func(vi)
-        if i > 0:
-            fi -= self.CDF_func(vi-self._delta)
-        return fi
+    def set_procs_request_method_beta(self, wd, procs):
+        wd.set_processing_units(procs_function=self.req_procs)
 
-    def compute_FV(self, i):
-        vi = (self._a + self._delta * i)
-        fi = self.compute_F(i)
-        return vi * fi
-
-    def compute_sum_F(self):
-        sumF = (self._n + 1) * [0]
-        sumF[self._n] = self.compute_F(self._n)
-        for k in range(self._n - 1, 0, -1):
-            sumF[k] = self.compute_F(k) + sumF[k + 1]
-        return sumF
-
-    def get_optimal(self):
-        return -1
-
-    def compute_request_sequence(self):
-        return self._request_sequence
+    def get_remove_entries_count(self):
+        return self.prev_instances
 
 
-class ATOptimalSequence(RequestSequence):
-    '''Optimal sequence of request values when a job runs together with
-    a continuous stream of small jobs that can be used for backfill. '''
+class HPCScenario(ScenarioInfo):
+    def __init__(self, prev_entries):
+        super(HPCScenario, self).__init__('HPC', prev_entries)
 
-    def __init__(self, backfill_rate, distribution, discret_samples=100):
-        super(ATOptimalSequence, self).__init__(distribution,
-                                                   discret_samples)
-        self.__backfill_rate = backfill_rate
-        self.__sumF = self.__compute_sum_F()
-        self.__sumFV = self.__compute_sum_FV()
-        E_val = self.compute_E_value(1, 0, 0)
-        self.__t1 = self._a + E_val[1] * self._delta
-        self.__makespan = E_val[0]
-
-    def __compute_sum_FV(self):
-        sumFV = []
-        sumFV.append(self.compute_FV(0))
-        for k in range(1, self._n + 1):
-            sumFV.append(self.compute_FV(k) +
-                         sumFV[k - 1])
-        return sumFV
-
-    def __compute_sum_F(self):
-        sumF = []
-        sumF.append(self.compute_F(0))
-        for k in range(1, self._n + 1):
-            sumF.append(self.compute_F(k) +
-                        sumF[k - 1])
-        return sumF
-
-    def get_optimal(self):
-        return self.__makespan
-
-    def __compute_sum_bound(self, i, m, k, j):
-        spec = math.floor(j - self.__backfill_rate *
-                          (j + k + (m + 1) * self._a / self._delta))
-        return max(i - 1, int(spec))
-
-    def compute_sum(self, sfrom, sto, sfun):
-        if sto < sfrom:
-            return 0
-        return sfun[sto] - sfun[sfrom - 1]
-
-    def __compute_E_table(self, i, m, k):
-        if i == self._n + 1:
-            return (0, self._n)
-
-        min_makespan = -1
-        min_request = 0
-        for j in range(i, self._n + 1):
-            bound = self.__compute_sum_bound(i, m, k, j)
-            makespan = float(self.compute_sum(i, bound, self.__sumF) *
-                             (self._a + self._delta * j))
-            makespan += (self.compute_sum(bound + 1, j, self.__sumF) *
-                         (m * self._a + k * self._delta) * 1. *
-                         self.__backfill_rate / (1 - self.__backfill_rate))
-            makespan += (self.compute_sum(bound + 1, j, self.__sumFV) /
-                         float(1 - self.__backfill_rate))
-            makespan += (self.compute_sum(j + 1, self._n, self.__sumF) *
-                         (self._a + self._delta * j))
-
-            if (j + 1, m + 1, k + j) in self._E:
-                makespan += self._E[(j + 1, m + 1, k + j)][0]
-            else:
-                E_val = self.__compute_E_table(j + 1, m + 1, k + j)
-                makespan += E_val[0]
-                self._E[(j + 1, m + 1, k + j)] = E_val
-
-            if min_makespan > makespan or min_makespan == -1:
-                min_makespan = makespan
-                min_request = j
-
-        return (min_makespan, min_request)
-
-    def compute_request_sequence(self):
-        if len(self._request_sequence) > 0:
-            return self._request_sequence
-        E_val = (0, 0)
-        j = 1
-        m = 0
-        k = 0
-        while E_val[1] < self._n:
-            E_val = self.compute_E_value(j, m, k)
-            self._request_sequence.append(self._a + E_val[1] * self._delta)
-            j = E_val[1] + 1
-            m += 1
-            k += E_val[1]
-        return self._request_sequence
-
-    def compute_E_value(self, i, m, k):
-        if (i, m, k) in self._E:
-            return self._E[(i, m, k)]
-        E_val = self.__compute_E_table(i, m, k)
-        self._E[(i, m, k)] = E_val
-        return E_val
+    def set_time_request_method(self, wd):
+        request_sequence = Workload.ConstantDistr(
+            wd.upper_bound).random_sample(1)
+        wd.set_request_time(request_sequence=request_sequence)
 
 
-class UOptimalSequence(RequestSequence):
-    ''' Sequence that optimizes the job utilization '''
+class MaxScenario(ScenarioInfo):
+    def __init__(self, prev_entries):
+        super(MaxScenario, self).__init__('Max', prev_entries)
 
-    def __init__(self, distribution, discret_samples=100):
-        super(UOptimalSequence, self).__init__(distribution, discret_samples)
-        E_val = self.compute_E_value(1, 0, 0)
-        self.__t1 = self._a + E_val[1] * self._delta
-        self.__utilization = E_val[0]
+    def req_time(self, walltimes):
+        return [max(walltimes) for i in walltimes]
 
-    def get_optimal(self):
-        return self.__utilization
-
-    def __compute_E_table(self, i, m, k):
-        if i == self._n + 1:
-            return (0, self._n)
-
-        max_utilization = 0
-        max_request = 0
-        FV = 0
-        for j in range(i, self._n + 1):
-            FV += self.compute_FV(j)
-            utilization = float(FV / ((m + 1) * self._a +
-                                      (k + j) * self._delta))
-            if (j + 1, m + 1, k + j) in self._E:
-                utilization += self._E[(j + 1, m + 1, k + j)][0]
-            else:
-                E_val = self.__compute_E_table(j + 1, m + 1, k + j)
-                utilization += E_val[0]
-                self._E[(j + 1, m + 1, k + j)] = E_val
-
-            if max_utilization < utilization:
-                max_utilization = utilization
-                max_request = j
-
-        return (max_utilization, max_request)
-
-    def compute_request_sequence(self):
-        if len(self._request_sequence) > 0:
-            return self._request_sequence
-        E_val = (0, 0)
-        j = 1
-        m = 0
-        k = 0
-        while E_val[1] < self._n:
-            E_val = self.compute_E_value(j, m, k)
-            self._request_sequence.append(self._a + E_val[1] * self._delta)
-            j = E_val[1] + 1
-            m += 1
-            k += E_val[1]
-        return self._request_sequence
-
-    def compute_E_value(self, i, m, k):
-        if (i, m, k) in self._E:
-            return self._E[(i, m, k)]
-        E_val = self.__compute_E_table(i, m, k)
-        self._E[(i, m, k)] = E_val
-        return E_val
+    def set_time_request_method(self, wd):
+        wd.set_request_time(request_function=self.req_time)
 
 
-class TOptimalSequence(RequestSequence):
-    ''' Sequence that optimizes the total makespan of a job. Defined in the
-    Aupy et al paper published in IPDPS 2019. '''
+class NeuroScenario(ScenarioInfo):
+    def __init__(self, prev_entries):
+        super(NeuroScenario, self).__init__('Neuro', prev_entries)
 
-    def __init__(self, distribution, discret_samples=100):
-        super(TOptimalSequence, self).__init__(distribution, discret_samples)
-        self.__sumF = self.compute_sum_F()
-        E_val = self.compute_E_value(1)
-        self.__t1 = self._a + E_val[1] * self._delta
-        self.__makespan = E_val[0]
+    def req_time_neuroscience(self, walltimes):
+        return [max(walltimes[i - self.prev_instances:i])
+                for i in range(self.prev_instances, len(walltimes))]
 
-    def get_optimal(self):
-        return self.__makespan
+    def set_time_request_method(self, wd):
+        wd.set_request_time(request_function=self.req_time_neuroscience)
 
-    def __compute_E_table(self, i):
-        if i == self._n + 1:
-            return (0, self._n)
+    def get_remove_entries_count(self):
+        return 0
 
-        min_makespan = -1
-        min_request = -1
-        for j in range(i, self._n + 1):
-            makespan = float(self.__sumF[i] * (self._a + self._delta * j))
-            if j + 1 in self._E:
-                makespan += self._E[j + 1][0]
-            else:
-                E_val = self.__compute_E_table(j + 1)
-                makespan += E_val[0]
-                self._E[j + 1] = E_val
 
-            if min_request == -1 or min_makespan > makespan:
-                min_makespan = makespan
-                min_request = j
-        return (min_makespan, min_request)
+class TOptimalScenario(ScenarioInfo):
+    def __init__(self, prev_entries, distr, distr_param):
+        super(TOptimalScenario, self).__init__('TOptimal', prev_entries)
+        self.__distribution = distr
+        self.__param = distr_param
+        try:
+            with open("request_sequence/toptimal_%s_%s" % (
+                      self.__distribution.get_user_friendly_name(),
+                      "_".join([str(i) for i in self.__param])), "r") as fp:
+                line = fp.readline().split(" ")
+                self.sequence_toptimal = [float(i) for i in line]
+        except IOError:
+            sw = Workload.TOptimalSequence(distr, discret_samples=127)
+            self.sequence_toptimal = sw.compute_request_sequence()
 
-    def compute_request_sequence(self):
-        if len(self._request_sequence) > 0:
-            return self._request_sequence
-        E_val = (0, 0)
-        j = 1
-        while E_val[1] < self._n:
-            E_val = self.compute_E_value(j)
-            self._request_sequence.append(self._a + E_val[1] * self._delta)
-            j = E_val[1] + 1
-        return self._request_sequence
+    def set_time_request_method(self, wd):
+        wd.set_request_time(request_sequence=self.sequence_toptimal)
 
-    def compute_E_value(self, i):
-        if i in self._E:
-            return self._E[i]
-        E_val = self.__compute_E_table(i)
-        self._E[i] = E_val
-        return E_val
+
+class ATOptimalScenario(ScenarioInfo):
+    def __init__(self, prev_entries, distr, distr_param, zeta):
+        super(ATOptimalScenario, self).__init__('WBackfill_'+str(zeta),
+                                                   prev_entries)
+        self.__distribution = distr
+        self.__param = distr_param
+        try:
+            with open("request_sequence/atoptimal_%.2f_%s_%s" % (zeta,
+                      self.__distribution.get_user_friendly_name(),
+                      "_".join([str(i) for i in self.__param])), "r") as fp:
+                line = fp.readline().split(" ")
+                self.sequence = [float(i) for i in line]
+        except IOError:
+            sw = Workload.ATOptimalSequence(zeta, distr, discret_samples=30)
+            self.sequence = sw.compute_request_sequence()
+
+    def set_time_request_method(self, wd):
+        wd.set_request_time(request_sequence=self.sequence)
+
+
+class UOptimalScenario(ScenarioInfo):
+    def __init__(self, prev_entries, distr, distr_param):
+        super(UOptimalScenario, self).__init__('UOptimal', prev_entries)
+        self.__distribution = distr
+        self.__param = distr_param
+        try:
+            with open("request_sequence/uoptimal_%s_%s" % (
+                      self.__distribution.get_user_friendly_name(),
+                      "_".join([str(i) for i in self.__param])), "r") as fp:
+                line = fp.readline().split(" ")
+                self.sequence_uoptimal = [float(i) for i in line]
+        except IOError:
+            sw = Workload.UOptimalSequence(distr, discret_samples=23)
+            self.sequence_uoptimal = sw.compute_request_sequence()
+
+    def set_time_request_method(self, wd):
+        wd.set_request_time(request_sequence=self.sequence_uoptimal)
