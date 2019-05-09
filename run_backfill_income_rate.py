@@ -1,6 +1,7 @@
 import argparse
 import logging
 import inspect
+import os
 import sys
 sys.path.append("./ScheduleFlow_v1.0")
 import ScheduleFlow
@@ -159,6 +160,7 @@ def parse_arguments():
 
 
 if __name__ == '__main__':
+    os.environ["SF_DRAW_PATH"] = "./ScheduleFlow_v1.0/draw"
     distr_param = get_class_param_info()
     logger = logging.getLogger(__name__)
 
