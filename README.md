@@ -12,7 +12,7 @@ scheduled into smaller backfilling spaces than their requests (temporary overwri
 
 More details about implementation details as well as examples can be found on the wiki.
 
-#### Citation
+#### Paper
 
 If you use the resources available here in your work, please cite our paper:
 
