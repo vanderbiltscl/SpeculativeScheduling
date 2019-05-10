@@ -10,6 +10,14 @@ The python objects represent an extension of the classic reservation-based HPC s
 The backfilling algorithm is also extended to include speculation by allowing stochastic jobs to be
 scheduled into smaller backfilling spaces than their requests (temporary overwrite of their requirements).
 
+More details about implementation details as well as examples can be found on the wiki.
+
+#### Citation
+
+If you use the resources available here in your work, please cite our paper:
+
+*Speculative Scheduling Techniques for Stochastic HPC Applications*. Ana Gainaru, Guillaume Pallez (Aupy), Hongyang Sun, Padma Raghavan [In submission at ICPP 2019] 
+
 ## Usage
 
 There are currently 2 scripts that can be used to trigger different scheduling scenarios:
