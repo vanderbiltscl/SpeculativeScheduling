@@ -3,7 +3,7 @@ import logging
 import inspect
 import os
 import sys
-sys.path.append("./ScheduleFlow_v1.0")
+sys.path.append("./ScheduleFlow_v1.1")
 import ScheduleFlow
 import Workload
 import SpeculativeSubmission
@@ -119,7 +119,7 @@ def parse_arguments():
 
 
 if __name__ == '__main__':
-    os.environ["SF_DRAW_PATH"] = "./ScheduleFlow_v1.0/draw"
+    os.environ["SF_DRAW_PATH"] = "./ScheduleFlow_v1.1/draw"
     distr_param = get_class_param_info()
     logger = logging.getLogger(__name__)
 
