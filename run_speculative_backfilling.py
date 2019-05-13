@@ -3,7 +3,7 @@ sys.path.append("./ScheduleFlow_v1.0")
 import ScheduleFlow
 import SpeculativeBackfill
 import Workload
-import Scenarios
+import SpeculativeSubmission
 import numpy as np
 import sys
 
