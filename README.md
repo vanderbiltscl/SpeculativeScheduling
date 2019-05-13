@@ -22,5 +22,5 @@ If you use the resources available here in your work, please cite our paper:
 
 There are currently 2 scripts that can be used to trigger different scheduling scenarios:
 
-* The `run_speculative_simulator` script tests the speculative deployment of stochastic applications by using past information of jobs to overwrite their request run time
+* The `run_speculative_submission` script tests the speculative deployment of stochastic applications by using past information of jobs to overwrite their request run time
 * The `run_speculative_backfill` script tests the speculative backfilling algorithm for different ratios of small to large jobs
