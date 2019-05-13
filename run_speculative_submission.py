@@ -6,7 +6,7 @@ import sys
 sys.path.append("./ScheduleFlow_v1.0")
 import ScheduleFlow
 import Workload
-import Scenarios
+import SpeculativeSubmission
 
 
 def run_simulation(simulation, scenario, procs, wd):
@@ -147,14 +147,14 @@ if __name__ == '__main__':
         exit()
 
     scenario = []
-    scenario.append(Scenarios.HPCScenario(prev_instance))
-    scenario.append(Scenarios.MaxScenario(prev_instance))
-    scenario.append(Scenarios.TOptimalScenario(prev_instance, distr,
+    scenario.append(SpeculativeSubmission.HPCScenario(prev_instance))
+    scenario.append(SpeculativeSubmission.MaxScenario(prev_instance))
+    scenario.append(SpeculativeSubmission.TOptimalScenario(prev_instance, distr,
                                                arg_list['param']))
-    scenario.append(Scenarios.UOptimalScenario(prev_instance, distr,
+    scenario.append(SpeculativeSubmission.UOptimalScenario(prev_instance, distr,
                                                arg_list['param']))
     if arg_list['run_neuro'] is not None:
-        scenario.append(Scenarios.NeuroScenario(prev_instance))
+        scenario.append(SpeculativeSubmission.NeuroScenario(prev_instance))
 
     simulation = ScheduleFlow.Simulator(generate_gif=arg_list['create_gif'],
                                         loops=arg_list['loops_runtime'],

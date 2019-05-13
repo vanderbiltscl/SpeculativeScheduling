@@ -6,7 +6,7 @@ import sys
 sys.path.append("./ScheduleFlow_v1.0")
 import ScheduleFlow
 import Workload
-import Scenarios
+import SpeculativeSubmission
 import numpy as np
 
 
@@ -51,7 +51,7 @@ def scale_jobs(job_list, new_work):
 def generate_small_jobs(makespan, zeta, distr, param):
     small_job_work = int(makespan * zeta)
     total_small_jobs = int(400 * zeta) 
-    scenario = Scenarios.ATOptimalScenario(0, distr,
+    scenario = SpeculativeSubmission.ATOptimalScenario(0, distr,
                                               param, 0)
     wd = Workload.Workload(distr, total_small_jobs)
     scenario.set_procs_request_method(wd, arg_list['procs'])
@@ -194,16 +194,16 @@ if __name__ == '__main__':
 
     for loop in range(arg_list['loops']):
         wd = Workload.Workload(distr, arg_list['jobs'])
-        scenario_z0 = Scenarios.ATOptimalScenario(0, distr,
+        scenario_z0 = SpeculativeSubmission.ATOptimalScenario(0, distr,
                                                      arg_list['param'], 0)
         scenario_z0.set_procs_request_method(wd, arg_list['procs'])
-        scenario_hpc = Scenarios.HPCScenario(0)
+        scenario_hpc = SpeculativeSubmission.HPCScenario(0)
         makespan = run_simulation(simulation_z0, scenario_z0,
                                   arg_list['procs'], wd, [])
         for i in range(1, 10):
             zeta = float(i / 10)
             print("\n\nZeta: %.2f" %(zeta))
-            scenario = Scenarios.ATOptimalScenario(0, distr,
+            scenario = SpeculativeSubmission.ATOptimalScenario(0, distr,
                                                       arg_list['param'],
                                                       zeta)
             ret = generate_small_jobs(makespan, zeta,
