@@ -160,7 +160,7 @@ def parse_arguments():
 
 
 if __name__ == '__main__':
-    os.environ["SF_DRAW_PATH"] = "./ScheduleFlow_v1.1/draw"
+    os.environ["ScheduleFlow_PATH"] = "./ScheduleFlow_v1.1"
     distr_param = get_class_param_info()
     logger = logging.getLogger(__name__)
 
