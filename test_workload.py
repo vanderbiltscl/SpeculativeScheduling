@@ -1,7 +1,7 @@
 import unittest
 import SpeculativeSubmission
 import sys
-sys.path.append("./ScheduleFlow_v1.0")
+sys.path.append("./ScheduleFlow_v1.1")
 import ScheduleFlow
 import Workload
 
