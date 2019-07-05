@@ -10,8 +10,7 @@ import sys
 import OptimalSequence
 
 bins=50
-dataset = "test"
-workload_len = 1000
+dataset = "fMRIQA_v3"
 
 def func_exp(x, a, b, c):
     return a * np.exp(b * x) + c
@@ -120,16 +119,17 @@ def get_pdf(data, params, bins):
     return np.poly1d(params)
 
 def load_workload():
-    up_bound = 6
-    low_bound = -4
-    mu = 8
-    sigma = 2
-    all_data = pd.Series(truncnorm.rvs(low_bound, up_bound, loc=mu, scale=sigma, size=workload_len))
-    return all_data
+    all_data = np.loadtxt("ACCRE/"+dataset+".out", delimiter=' ')
+    print("Load %d entries from %s" %(len(all_data), "ACCRE/"+dataset+".out"))
+    return pd.Series(all_data)
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        dataset = sys.argv[1].split("/")[1]
+        dataset = dataset[:-4]
+
     all_data = load_workload()
-    test_cnt = int(len(all_data)/20)
+    test_cnt = int(len(all_data)/100)
     testing = all_data[test_cnt:]
     data =  all_data[:test_cnt]
     data = data.append(pd.Series(max(all_data)))
@@ -137,19 +137,19 @@ if __name__ == '__main__':
     y, x = np.histogram(data, bins=bins, density=True)
     x = (x + np.roll(x, -1))[:-1] / 2.0
 
-    df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Error"])
+    df = pd.DataFrame(columns=["Function", "Parameters", "Cost"])
 
     print("Using the discreet distribution ...")
     yall = [i/sum(y) for i in y]
     cdf_just_training = lambda val: discreet_cdf(val, x, yall)
     cost_discreet = compute_cost(cdf_just_training, testing)
-    df.loc[len(df)] = ["Discreet", "", cost_discreet, 0]
+    df.loc[len(df)] = ["Discreet", "", cost_discreet]
     
     yall, xall = np.histogram(all_data, bins=bins, density=True)
     xall = (xall + np.roll(xall, -1))[:-1] / 2.0
     cdf_all_data = lambda val: discreet_cdf(val, xall, yall)
     cost_discreet_all = compute_cost(cdf_all_data, testing)
-    df.loc[len(df)] = ["Optimal", "", cost_discreet_all, 0]
+    df.loc[len(df)] = ["Optimal", "", cost_discreet_all]
     
     print("Using the continuous distribution ...")
     print("-- Polynomial fit")
@@ -168,14 +168,14 @@ if __name__ == '__main__':
                 cost = compute_cost(cdf, testing)
             except:
                 continue
-            df.loc[len(df)] = ["Polynomial", order, cost, err]
+            df.loc[len(df)] = ["Polynomial", order, cost]
     
     print("-- Distribution fit")
     distribution, params, err = best_fit_distribution(x, y, bins)
     arg = params[:-2]
     cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
     cost = compute_cost(cdf, testing)
-    df.loc[len(df)] = [distribution.name, "", cost, err]
+    df.loc[len(df)] = [distribution.name, "", cost]
     # String of the distribution parameters: str(params[-2])+" "+str(params[-1])
     
     print("-- Exponantial fit")
@@ -183,8 +183,8 @@ if __name__ == '__main__':
     pdf = lambda val: func_exp(val, *popt)
     cdf = lambda val: get_cdf(pdf, x[0], val)
     cost = compute_cost(cdf, testing)
-    df.loc[len(df)] = ["Exponential", "", cost, 0]
+    df.loc[len(df)] = ["Exponential", "", cost]
 
     print(df)
-    with open(dataset+".csv", 'w') as f:
+    with open("ACCRE/"+dataset+".csv", 'w') as f:
         df.to_csv(f, header=True)
