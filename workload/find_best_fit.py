@@ -5,11 +5,13 @@ import scipy.integrate as integrate
 from scipy.stats import truncnorm
 import scipy.stats as st
 from scipy.optimize import curve_fit
+import sys
 
 import OptimalSequence
 
 bins=50
 dataset = "test"
+workload_len = 1000
 
 def func_exp(x, a, b, c):
     return a * np.exp(b * x) + c
@@ -68,6 +70,10 @@ def best_fit_distribution(x, y, bins):
     best_params = (0.0, 1.0)
     best_sse = np.inf
 
+    progressbar_width = len(dist_list)
+    sys.stdout.write("[%s]" % ("." * progressbar_width))
+    sys.stdout.flush()
+    sys.stdout.write("\b" * (progressbar_width + 1))
     # Estimate distribution parameters from data
     for distribution in dist_list:
 
@@ -98,6 +104,10 @@ def best_fit_distribution(x, y, bins):
         except Exception:
             pass
 
+        sys.stdout.write("=")
+        sys.stdout.flush()
+        
+    sys.stdout.write("]\n")
     return (best_distribution, best_params, best_sse)
 
 def get_pdf(data, params, bins):
@@ -114,12 +124,12 @@ def load_workload():
     low_bound = -4
     mu = 8
     sigma = 2
-    all_data = pd.Series(truncnorm.rvs(low_bound, up_bound, loc=mu, scale=sigma, size=2000))
+    all_data = pd.Series(truncnorm.rvs(low_bound, up_bound, loc=mu, scale=sigma, size=workload_len))
     return all_data
 
 if __name__ == '__main__':
     all_data = load_workload()
-    test_cnt = int(len(all_data)/10)
+    test_cnt = int(len(all_data)/20)
     testing = all_data[test_cnt:]
     data =  all_data[:test_cnt]
     data = data.append(pd.Series(max(all_data)))
@@ -165,7 +175,8 @@ if __name__ == '__main__':
     arg = params[:-2]
     cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
     cost = compute_cost(cdf, testing)
-    df.loc[len(df)] = [distribution.name, str(params[-2])+" "+str(params[-1]), cost, err]
+    df.loc[len(df)] = [distribution.name, "", cost, err]
+    # String of the distribution parameters: str(params[-2])+" "+str(params[-1])
     
     print("-- Exponantial fit")
     popt, pcov = curve_fit(func_exp, x, y)
@@ -175,4 +186,5 @@ if __name__ == '__main__':
     df.loc[len(df)] = ["Exponential", "", cost, 0]
 
     print(df)
-    df.to_csv(dataset+".csv")
+    with open(dataset+".csv", 'w') as f:
+        df.to_csv(f, header=True)
