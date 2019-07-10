@@ -140,16 +140,20 @@ if __name__ == '__main__':
     df = pd.DataFrame(columns=["Function", "Parameters", "Cost"])
 
     print("Using the discreet distribution ...")
-    yall = [i/sum(y) for i in y]
-    cdf_just_training = lambda val: discreet_cdf(val, x, yall)
+    print(len(testing))
+    y = [i/sum(y) for i in y]
+    cdf_just_training = lambda val: discreet_cdf(val, x, y)
     cost_discreet = compute_cost(cdf_just_training, testing)
     df.loc[len(df)] = ["Discreet", "", cost_discreet]
+    print(len(data), sum(y), cost_discreet)
     
     yall, xall = np.histogram(all_data, bins=bins, density=True)
     xall = (xall + np.roll(xall, -1))[:-1] / 2.0
+    yall = [i/sum(yall) for i in yall]
     cdf_all_data = lambda val: discreet_cdf(val, xall, yall)
     cost_discreet_all = compute_cost(cdf_all_data, testing)
     df.loc[len(df)] = ["Optimal", "", cost_discreet_all]
+    print(len(all_data), sum(yall), cost_discreet_all)
     
     print("Using the continuous distribution ...")
     print("-- Polynomial fit")
