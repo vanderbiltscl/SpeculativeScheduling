@@ -11,7 +11,7 @@ import OptimalSequence
 
 bins = 50
 dataset = "fMRIQA_v3"
-train_perc = list(range(1,10,5)) + list(range(10, 101, 10))
+train_perc = list(range(10, 101, 10))#list(range(1,10,5)) + list(range(10, 101, 10))
 
 def func_exp(x, a, b, c):
     return a * np.exp(b * x) + c
@@ -130,10 +130,15 @@ if __name__ == '__main__':
         dataset = dataset[:-4]
 
     all_data = load_workload()
-    
+    if len(all_data) < 4000:
+        exit()
     df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Trainset"])
 
-    for perc in train_perc:        
+    bins = int(len(all_data)/10)
+    bins = min(int(bins/100)*100, 800)
+    bins = 200
+    for perc in train_perc:
+        print(perc/100, bins)
         test_cnt = int(len(all_data)*perc/100)
         testing = all_data[:] #[test_cnt:]
         data =  all_data[:test_cnt]
@@ -156,7 +161,7 @@ if __name__ == '__main__':
         yall = [i/sum(yall) for i in yall]
         cdf_all_data = lambda val: discreet_cdf(val, xall, yall)
         cost_discreet_all = compute_cost(cdf_all_data, testing)
-        df.loc[len(df)] = ["Optimal", "", cost_discreet_all, perc]
+        df.loc[len(df)] = ["Optimal", bins, cost_discreet_all, perc]
 
         print("Using the continuous distribution ...")
         print("-- Polynomial fit")
@@ -198,6 +203,6 @@ if __name__ == '__main__':
         df.loc[len(df)] = ["Exponential", "", cost, perc]
 
     print(df)
-    with open("ACCRE/"+dataset+"_trainset.csv", 'w') as f:
+    with open("ACCRE/"+dataset+"_trainset_10perc.csv", 'a') as f:
         df.to_csv(f, header=True)
         

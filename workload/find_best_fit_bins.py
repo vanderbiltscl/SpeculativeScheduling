@@ -28,7 +28,7 @@ def discreet_cdf(x, histogram, histogram_counts):
     return count
 
 def compute_cost(cdf, walltimes):
-    handler = OptimalSequence.TOptimalSequence(min(walltimes), max(walltimes), cdf, )
+    handler = OptimalSequence.TOptimalSequence(min(walltimes), max(walltimes), cdf, discret_samples=bins)
     sequence = handler.compute_request_sequence()
     #print(sequence)
     cost = 0
@@ -129,15 +129,18 @@ if __name__ == '__main__':
         dataset = dataset[:-4]
 
     all_data = load_workload()
-    if len(all_data) < 1000:
+    if len(all_data) < 4000:
         exit()
-    test_cnt = int(len(all_data)/10)
-    testing = all_data[test_cnt:]
+
+    perc = 50
+    test_cnt = int(len(all_data)*perc/100)
+    testing = all_data[:] #[test_cnt:]
     data =  all_data[:test_cnt]
     data = data.append(pd.Series(max(all_data)))
-    
+
     df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Bins"])
 
+    bins_list = range(50, min(int(len(all_data)/10)+101, 810), 50)
     for bins in bins_list:
         y, x = np.histogram(data, bins=bins, density=True)
         x = (x + np.roll(x, -1))[:-1] / 2.0
@@ -156,7 +159,7 @@ if __name__ == '__main__':
         yall = [i/sum(yall) for i in yall]
         cdf_all_data = lambda val: discreet_cdf(val, xall, yall)
         cost_discreet_all = compute_cost(cdf_all_data, testing)
-        df.loc[len(df)] = ["Optimal", "", cost_discreet_all, bins]
+        df.loc[len(df)] = ["Optimal", perc, cost_discreet_all, bins]
 
         print("Using the continuous distribution ...")
         print("-- Polynomial fit")
@@ -198,6 +201,6 @@ if __name__ == '__main__':
         df.loc[len(df)] = ["Exponential", "", cost, bins]
 
     print(df)
-    with open("ACCRE/"+dataset+"_bins.csv", 'w') as f:
+    with open("ACCRE/"+dataset+"_bins_10perc.csv", 'w') as f:
         df.to_csv(f, header=True)
         
