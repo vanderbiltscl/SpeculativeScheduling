@@ -30,12 +30,35 @@ A CSV file containing one line per experiment: `Function Parameters Cost`
 ### Functionalities
 
 **1. Default**
+
 `find_best_fit.py` takes an input dataset, creates the histogram using 50 bins using 1% of the total dataset. Based on the histogram it computes the cost of using discreet or continuous fit for the rest of 99% of the data and writes the results in the csv file. For the `Optimal` case, it creates the histogram using 100% of the dataset and tests it on the last 99%.
 
 *Output* Results for different datasets are appended in the cost.csv file
 
 **2. Differnt number of bins**
 
+Script `find_best_fit_bins.py` gatheres the cost of all fitting methods when varying the number of bins from 50 to max in increments of 50, whith 
+```python
+max = min(int(len(all_data)/10)+100, 800)
+```
+The script uses the first 10% of data for training and all the data for testing.
+
+*Output* Results for a given dataset are appended in path/dataset_bins.csv
+
 **3. Differnt training percentaces**
 
+
+Script `find_best_fit_trainset.py` gatheres the cost of all fitting methods when varying the percentage of tha data used for training from 10% to 100% in increments of 10. 
+
+The script uses as default 10% of all data as the total bins used for creating the histogram. The number of bins can also be provided as an optional input parameter.
+
+*Output* Results for a given dataset are appended in path/dataset_trainset.csv
+
+
 **4. Adapting the sequence**
+
+Script `find_best_adapt.py` uses x% of the data for computing the request sequence and uses it for the next y% of the data after which it triggers a new testing phase (y <= x), where x and y are given as input parameters.
+
+**In construction**
+
+*Output* Results for a given dataset are appended in path/dataset_adapt.csv
