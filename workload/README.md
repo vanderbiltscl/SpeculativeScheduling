@@ -37,6 +37,24 @@ A CSV file containing one line per experiment: `Function Parameters Cost`
 
 **2. Differnt number of bins**
 
+Script `find_best_fit_bins.py` gatheres the cost of all fitting methods when varying the number of bins from 50 to max in increments of 50, whith 
+```python
+max = min(int(len(all_data)/10)+100, 800)
+```
+The script uses the first 10% of data for training and all the data for testing.
+
+*Output* Results for a given dataset are appended in path/dataset_bins.csv
+
 **3. Differnt training percentaces**
 
+
+Script `find_best_fit_trainset.py` gatheres the cost of all fitting methods when varying the percentage of tha data used for training from 10% to 100% in increments of 10. 
+
+The script uses as default 10% of all data as the total bins used for creating the histogram. The number of bins can also be provided as an optional input parameter.
+
+*Output* Results for a given dataset are appended in path/dataset_trainset.csv
+
+
 **4. Adapting the sequence**
+
+TBD
