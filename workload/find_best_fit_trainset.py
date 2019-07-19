@@ -126,6 +126,8 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Usage: %s dataset_file [number_of_bins]" %(sys.argv[0]))
         print("Example: %s ACCRE/Multi_Atlas.out 100" %(sys.argv[0]))
+        exit()
+
     dataset = sys.argv[1].split("/")[1]
     dataset = dataset[:-4]
 
