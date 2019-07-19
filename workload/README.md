@@ -57,4 +57,8 @@ The script uses as default 10% of all data as the total bins used for creating t
 
 **4. Adapting the sequence**
 
-TBD
+Script `find_best_adapt.py` uses x% of the data for computing the request sequence and uses it for the next y% of the data after which it triggers a new testing phase (y <= x), where x and y are given as input parameters.
+
+**In construction**
+
+*Output* Results for a given dataset are appended in path/dataset_adapt.csv
