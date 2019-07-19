@@ -30,6 +30,7 @@ A CSV file containing one line per experiment: `Function Parameters Cost`
 ### Functionalities
 
 **1. Default**
+
 `find_best_fit.py` takes an input dataset, creates the histogram using 50 bins using 1% of the total dataset. Based on the histogram it computes the cost of using discreet or continuous fit for the rest of 99% of the data and writes the results in the csv file. For the `Optimal` case, it creates the histogram using 100% of the dataset and tests it on the last 99%.
 
 *Output* Results for different datasets are appended in the cost.csv file
