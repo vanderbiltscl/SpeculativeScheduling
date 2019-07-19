@@ -9,10 +9,6 @@ import sys
 
 import OptimalSequence
 
-bins = 50
-dataset = "fMRIQA_v3"
-train_perc = list(range(10, 101, 10))#list(range(1,10,5)) + list(range(10, 101, 10))
-
 def func_exp(x, a, b, c):
     return a * np.exp(b * x) + c
 
@@ -125,18 +121,25 @@ def load_workload():
     return pd.Series(all_data)
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        dataset = sys.argv[1].split("/")[1]
-        dataset = dataset[:-4]
+    train_perc = list(range(10, 101, 10))
+
+    if len(sys.argv) < 2:
+        print("Usage: %s dataset_file [number_of_bins]" %(sys.argv[0]))
+        print("Example: %s ACCRE/Multi_Atlas.out 100" %(sys.argv[0]))
+    dataset = sys.argv[1].split("/")[1]
+    dataset = dataset[:-4]
 
     all_data = load_workload()
     if len(all_data) < 4000:
         exit()
     df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Trainset"])
 
-    bins = int(len(all_data)/10)
-    bins = min(int(bins/100)*100, 800)
-    bins = 200
+    if len(sys.argv) > 2:
+        bins = int(sys.argv[2])
+    else:
+        bins = int(len(all_data)/10)
+        bins = min(int(bins/100)*100, 800)
+
     for perc in train_perc:
         print(perc/100, bins)
         test_cnt = int(len(all_data)*perc/100)
