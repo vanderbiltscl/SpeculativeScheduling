@@ -444,6 +444,11 @@ class TOptimalSequence(RequestSequence):
         self._E[i] = E_val
         return E_val
 
+class CheckpointSequence(RequestSequence):
+
+    def __init__(self, distribution, discret_samples=100):
+        super(TOptimalSequence, self).__init__(distribution, discret_samples)
+
 
 class Workload(object):
     ''' Class for generating the list of jobs used by the simulator '''
