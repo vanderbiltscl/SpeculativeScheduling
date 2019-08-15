@@ -201,6 +201,6 @@ if __name__ == '__main__':
         df.loc[len(df)] = ["Exponential", "", cost, bins]
 
     print(df)
-    with open("ACCRE/"+dataset+"_bins_10perc.csv", 'w') as f:
+    with open("ACCRE/"+dataset+"_bins.csv", 'a') as f:
         df.to_csv(f, header=True)
         

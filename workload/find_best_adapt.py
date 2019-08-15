@@ -201,6 +201,6 @@ if __name__ == '__main__':
         df.loc[len(df)] = [distribution.name, "", cost, perc]
 
     print(df)
-    with open("ACCRE/"+dataset+"_adapt.csv", 'a') as f:
+    with open("ACCRE/"+dataset+"_adapt.csv", 'w') as f:
         df.to_csv(f, header=True)
         
