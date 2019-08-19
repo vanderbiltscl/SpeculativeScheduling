@@ -455,33 +455,43 @@ class CheckpointSequence(RequestSequence):
 
     def __compute_makespan(self, ic, il, j, R, delta):
         makespan = 0
+        start = 0
+        if ic == 0:
+            start = self._a
         new_ic = (1 - delta) * ic + delta * j
-        if (new_ic, j) in self._E:
+        if (new_ic, j) in self._E:Your location
             makespan += self._E[(new_ic, j)][0]
         else:
             E_val = self.__compute_E_table(new_ic, j)
             makespan += E_val[0]
             self._E[(new_ic, j)] = E_val
-        makespan += ((R + delat * C + self.a * (j - ic)) * self._sumF[il])
+        makespan += ((R + delta * C + self._delta * (j - ic) + start) * self._sumF[il])
+        return makespan
 
     def __compute_E_table(self, ic, il):
         if il == self.n:
-            return (0, self._n)
+            return (0, self._n, 0)
         R = self.R
         if ic == 0:
             R = 0
+        min_makespan = -1
+        min_j = -1
+        min_delta = -1
 
         for j in range(il + 1, self._n + 1):
             makespan_wo = __compute_makespan(self, ic, il, j, R, 0)
+            delta = 1
             makespan = __compute_makespan(self, ic, il, j, R, 1)
-    
-        if min_request == -1 or min_makespan > makespan:
-                min_makespan = makespan
-                min_request = j
-                min_delta = delta
-        return (min_makespan, min_request)
+            if makespan_wo < makespan:
+                makespan = makespan_wo
+                delta = 0
 
-            
+        if min_makespan == -1 or min_makespan > makespan:
+                min_makespan = makespan
+                min_j = j
+                min_delta = delta
+        return (min_makespan, min_j, min_delta)
+
     def compute_request_sequence(self):
         return self._request_sequence
 
