@@ -493,6 +493,15 @@ class CheckpointSequence(RequestSequence):
         return (min_makespan, min_j, min_delta)
 
     def compute_request_sequence(self):
+        if len(self._request_sequence) > 0:
+            return self._request_sequence
+        E_val = (0, 0)
+        ic = 0, il = 0
+        while E_val[1] < self._n:
+            E_val = self.compute_E_value(ic, il)
+            self._request_sequence.append(self._a + E_val[1] * self._delta, E_val[2])
+            ic = (1 - E_val[2]) * ic + E_val[1] * E_val[2]
+            il = E_val[1]
         return self._request_sequence
 
     def compute_E_value(self, ic, il):
