@@ -224,8 +224,7 @@ class RequestSequence():
 
     def compute_sum_F(self):
         sumF = (self._n + 1) * [0]
-        sumF[self._n] = self.compute_F(self._n)
-        for k in range(self._n - 1, 0, -1):
+        for k in range(self._n - 1, -1, -1):
             sumF[k] = self.compute_F(k) + sumF[k + 1]
         return sumF
 
@@ -444,10 +443,54 @@ class TOptimalSequence(RequestSequence):
         self._E[i] = E_val
         return E_val
 
+
 class CheckpointSequence(RequestSequence):
 
     def __init__(self, distribution, discret_samples=100):
         super(TOptimalSequence, self).__init__(distribution, discret_samples)
+        self.C = 0.15
+        self.R = 0.15
+        self.__sumF = self.compute_sum_F()
+        E_val = self.compute_E_value(0, 0)
+
+    def __compute_makespan(self, ic, il, j, R, delta):
+        makespan = 0
+        new_ic = (1 - delta) * ic + delta * j
+        if (new_ic, j) in self._E:
+            makespan += self._E[(new_ic, j)][0]
+        else:
+            E_val = self.__compute_E_table(new_ic, j)
+            makespan += E_val[0]
+            self._E[(new_ic, j)] = E_val
+        makespan += ((R + delat * C + self.a * (j - ic)) * self._sumF[il])
+
+    def __compute_E_table(self, ic, il):
+        if il == self.n:
+            return (0, self._n)
+        R = self.R
+        if ic == 0:
+            R = 0
+
+        for j in range(il + 1, self._n + 1):
+            makespan_wo = __compute_makespan(self, ic, il, j, R, 0)
+            makespan = __compute_makespan(self, ic, il, j, R, 1)
+    
+        if min_request == -1 or min_makespan > makespan:
+                min_makespan = makespan
+                min_request = j
+                min_delta = delta
+        return (min_makespan, min_request)
+
+            
+    def compute_request_sequence(self):
+        return self._request_sequence
+
+    def compute_E_value(self, ic, il):
+        if (ic, il) in self._E:
+            return self._E[(ic, il)]
+        E_val = self.__compute_E_table(ic, il)
+        self._E[(ic, il)] = E_val
+        return E_val
 
 
 class Workload(object):
