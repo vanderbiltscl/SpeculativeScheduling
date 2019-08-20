@@ -516,7 +516,10 @@ class CheckpointSequence(RequestSequence):
         il = 0
         while E_val[1] < self._n:
             E_val = self.compute_E_value(ic, il)
-            self._request_sequence.append((self._a + E_val[1] * self._delta, E_val[2]))
+            start = 0
+            if ic == 0:
+                start = self._a
+            self._request_sequence.append((start + (E_val[1] - ic) * self._delta, E_val[2]))
             ic = (1 - E_val[2]) * ic + E_val[1] * E_val[2]
             il = E_val[1]
         return self._request_sequence
