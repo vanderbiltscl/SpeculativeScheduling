@@ -446,12 +446,12 @@ class TOptimalSequence(RequestSequence):
 
 class CheckpointSequence(RequestSequence):
 
-    def __init__(self, distribution, discret_samples=100):
+    def __init__(self, distribution, discret_samples=100, always_checkpoint=False):
         super(TOptimalSequence, self).__init__(distribution, discret_samples)
         self.C = 0.15
         self.R = 0.15
         self.__sumF = self.compute_sum_F()
-        E_val = self.compute_E_value(0, 0)
+        E_val = self.compute_E_value(0, 0, always_checkpoint=always_checkpoint)
 
     def __compute_makespan(self, ic, il, j, R, delta):
         makespan = 0
@@ -486,11 +486,27 @@ class CheckpointSequence(RequestSequence):
                 makespan = makespan_wo
                 delta = 0
 
-        if min_makespan == -1 or min_makespan > makespan:
+            if min_makespan == -1 or min_makespan > makespan:
                 min_makespan = makespan
                 min_j = j
                 min_delta = delta
         return (min_makespan, min_j, min_delta)
+
+    def __compute_E_table_cehckpoint(self, ic, il):
+        if il == self.n:
+            return (0, self._n, 1)
+        R = self.R
+        if ic == 0:
+            R = 0
+        min_makespan = -1
+        min_j = -1
+
+        for j in range(il + 1, self._n + 1):
+            makespan = __compute_makespan(self, ic, il, j, R, 1)
+            if min_makespan == -1 or min_makespan > makespan:
+                min_makespan = makespan
+                min_j = j
+        return (min_makespan, min_j, 1)
 
     def compute_request_sequence(self):
         if len(self._request_sequence) > 0:
@@ -504,10 +520,13 @@ class CheckpointSequence(RequestSequence):
             il = E_val[1]
         return self._request_sequence
 
-    def compute_E_value(self, ic, il):
+    def compute_E_value(self, ic, il, always_checkpoint=False):
         if (ic, il) in self._E:
             return self._E[(ic, il)]
-        E_val = self.__compute_E_table(ic, il)
+        if always_checkpoint:
+            E_val = self.__compute_E_table_checkpoint(ic, il) 
+        else:
+            E_val = self.__compute_E_table(ic, il)
         self._E[(ic, il)] = E_val
         return E_val
 
