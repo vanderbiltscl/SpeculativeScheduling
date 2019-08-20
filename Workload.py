@@ -447,10 +447,10 @@ class TOptimalSequence(RequestSequence):
 class CheckpointSequence(RequestSequence):
 
     def __init__(self, distribution, discret_samples=100, always_checkpoint=False):
-        super(TOptimalSequence, self).__init__(distribution, discret_samples)
-        self.C = 0.15
+        super(CheckpointSequence, self).__init__(distribution, discret_samples)
+        self._C = 0.15
         self.R = 0.15
-        self.__sumF = self.compute_sum_F()
+        self._sumF = self.compute_sum_F()
         E_val = self.compute_E_value(0, 0, always_checkpoint=always_checkpoint)
 
     def __compute_makespan(self, ic, il, j, R, delta):
@@ -459,17 +459,17 @@ class CheckpointSequence(RequestSequence):
         if ic == 0:
             start = self._a
         new_ic = (1 - delta) * ic + delta * j
-        if (new_ic, j) in self._E:Your location
+        if (new_ic, j) in self._E:
             makespan += self._E[(new_ic, j)][0]
         else:
             E_val = self.__compute_E_table(new_ic, j)
             makespan += E_val[0]
             self._E[(new_ic, j)] = E_val
-        makespan += ((R + delta * C + self._delta * (j - ic) + start) * self._sumF[il])
+        makespan += ((R + delta * self._C + self._delta * (j - ic) + start) * self._sumF[il])
         return makespan
 
     def __compute_E_table(self, ic, il):
-        if il == self.n:
+        if il == self._n:
             return (0, self._n, 0)
         R = self.R
         if ic == 0:
@@ -479,9 +479,9 @@ class CheckpointSequence(RequestSequence):
         min_delta = -1
 
         for j in range(il + 1, self._n + 1):
-            makespan_wo = __compute_makespan(self, ic, il, j, R, 0)
+            makespan_wo = self.__compute_makespan(ic, il, j, R, 0)
             delta = 1
-            makespan = __compute_makespan(self, ic, il, j, R, 1)
+            makespan = self.__compute_makespan(ic, il, j, R, 1)
             if makespan_wo < makespan:
                 makespan = makespan_wo
                 delta = 0
@@ -492,7 +492,7 @@ class CheckpointSequence(RequestSequence):
                 min_delta = delta
         return (min_makespan, min_j, min_delta)
 
-    def __compute_E_table_cehckpoint(self, ic, il):
+    def __compute_E_table_checkpoint(self, ic, il):
         if il == self.n:
             return (0, self._n, 1)
         R = self.R
@@ -502,7 +502,7 @@ class CheckpointSequence(RequestSequence):
         min_j = -1
 
         for j in range(il + 1, self._n + 1):
-            makespan = __compute_makespan(self, ic, il, j, R, 1)
+            makespan = self.__compute_makespan(ic, il, j, R, 1)
             if min_makespan == -1 or min_makespan > makespan:
                 min_makespan = makespan
                 min_j = j
@@ -512,10 +512,11 @@ class CheckpointSequence(RequestSequence):
         if len(self._request_sequence) > 0:
             return self._request_sequence
         E_val = (0, 0)
-        ic = 0, il = 0
+        ic = 0
+        il = 0
         while E_val[1] < self._n:
             E_val = self.compute_E_value(ic, il)
-            self._request_sequence.append(self._a + E_val[1] * self._delta, E_val[2])
+            self._request_sequence.append((self._a + E_val[1] * self._delta, E_val[2]))
             ic = (1 - E_val[2]) * ic + E_val[1] * E_val[2]
             il = E_val[1]
         return self._request_sequence
