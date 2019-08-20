@@ -13,8 +13,8 @@ if len(sys.argv) > 2:
 
 if len(sys.argv) > 3:
     scenario = sys.argv[3]
-    if scenario not in ['atoptimal', 'uoptimal', 'toptimal']:
-        print("usage: python %s start end ['atoptimal', 'uoptimal', 'toptimal']")
+    if scenario not in ['atoptimal', 'uoptimal', 'toptimal', 'checkpoint']:
+        print("usage: python %s start end ['atoptimal', 'uoptimal', 'toptimal', 'checkpoint']")
         exit()
 
 if len(sys.argv) > 4:
@@ -25,16 +25,19 @@ for n in range(start,end):
     distr = Workload.TruncNormalDistr(0, 20, 8, 2)
 
     if scenario == "uoptimal":
-        sw = Workload.UOptimalSequence(distr, discret_samples = n)
+        sw = Workload.UOptimalSequence(distr, discret_samples=n)
         val = sw.compute_E_value(1, 0, 0)
     elif scenario == "toptimal":
-        sw = Workload.TOptimalSequence(distr, discret_samples = n)
+        sw = Workload.TOptimalSequence(distr, discret_samples=n)
         val = sw.compute_E_value(1)
-    else:
-        sw = Workload.ATOptimalSequence(0, distr, discret_samples = n)
+    elif scenario=="atoptimal":
+        sw = Workload.ATOptimalSequence(0, distr, discret_samples=n)
         val = sw.compute_E_value(1, 0, 0)
+    else:
+        sw = Workload.CheckpointSequence(distr, discret_samples=n)
+        val = sw.compute_E_value(0, 0)
 
-    sequence = sw. compute_request_sequence()
+    sequence = sw.compute_request_sequence()
     end = time.time()
     print("%s, %d, %.6f, %.2f, %s" % (scenario, n, val[0], end-start, sequence))
 
