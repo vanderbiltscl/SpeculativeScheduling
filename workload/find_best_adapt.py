@@ -121,23 +121,24 @@ def load_workload():
     return pd.Series(all_data)
 
 if __name__ == '__main__':
-    train_perc = list(range(10, 101, 10))
-
-    if len(sys.argv) < 2:
-        print("Usage: %s dataset_file [number_of_bins]" %(sys.argv[0]))
+    if len(sys.argv) < 3:
+        print("Usage: %s dataset_file test_size [number_of_bins]" %(sys.argv[0]))
         print("Example: %s ACCRE/Multi_Atlas.out 100" %(sys.argv[0]))
         exit()
 
     dataset = sys.argv[1].split("/")[1]
     dataset = dataset[:-4]
+    
+    test_size = int(sys.argv[2])
+    train_perc = list(range(10, 101-test_size, 10))
 
     all_data = load_workload()
     if len(all_data) < 4000:
         exit()
     df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Trainset"])
 
-    if len(sys.argv) > 2:
-        bins = int(sys.argv[2])
+    if len(sys.argv) > 3:
+        bins = int(sys.argv[3])
     else:
         bins = int(len(all_data)/10)
         bins = min(int(bins/100)*100, 800)
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     for perc in train_perc:
         print(perc/100, bins)
         test_cnt = int(len(all_data)*perc/100)
-        testing = all_data[:] #[test_cnt:]
+        testing = all_data[test_cnt:test_cnt+test_size]
         data =  all_data[:test_cnt]
         data = data.append(pd.Series(max(all_data)))
 
@@ -198,16 +199,8 @@ if __name__ == '__main__':
         cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
         cost = compute_cost(cdf, testing)
         df.loc[len(df)] = [distribution.name, "", cost, perc]
-        # String of the distribution parameters: str(params[-2])+" "+str(params[-1])
-
-        print("-- Exponantial fit")
-        popt, pcov = curve_fit(func_exp, x, y)
-        pdf = lambda val: func_exp(val, *popt)
-        cdf = lambda val: get_cdf(pdf, x[0], val)
-        cost = compute_cost(cdf, testing)
-        df.loc[len(df)] = ["Exponential", "", cost, perc]
 
     print(df)
-    with open("ACCRE/"+dataset+"_trainset_10perc.csv", 'a') as f:
+    with open("ACCRE/"+dataset+"_adapt.csv", 'w') as f:
         df.to_csv(f, header=True)
         
