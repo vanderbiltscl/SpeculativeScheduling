@@ -6,16 +6,29 @@ start = 1
 end = 101
 scenario = "atoptimal"
 zeta_steps = 0
+check = False
+sequence_options = ['atoptimal', 'uoptimal', 'toptimal', 'checkpoint']
+
+def print_usage():
+        print("usage: python %s start end sequence_type [options]" %(sys.argv[0]))
+        print("sequence_type: %s" %(sequence_options))
+        print("options: for checkpoint 1 for taking checkpoints for every reservation (by default checkpoints are not forced)")
 
 if len(sys.argv) > 2:
     start = int(sys.argv[1])
     end = int(sys.argv[2])
 
+if len(sys.argv) < 2:
+    print_usage()
+    exit()
+
 if len(sys.argv) > 3:
     scenario = sys.argv[3]
-    if scenario not in ['atoptimal', 'uoptimal', 'toptimal', 'checkpoint']:
-        print("usage: python %s start end ['atoptimal', 'uoptimal', 'toptimal', 'checkpoint']")
+    if scenario not in sequence_options:
+        print_usage()
         exit()
+    if scenario == "checkpoint" and len(sys.argv) > 4:
+        check = True
 
 if len(sys.argv) > 4:
     zeta_steps = int(sys.argv[4])
@@ -34,7 +47,7 @@ for n in range(start,end):
         sw = Workload.ATOptimalSequence(0, distr, discret_samples=n)
         val = sw.compute_E_value(1, 0, 0)
     else:
-        sw = Workload.CheckpointSequence(distr, discret_samples=n)
+        sw = Workload.CheckpointSequence(distr, discret_samples=n, always_checkpoint=check)
         val = sw.compute_E_value(0, 0)
 
     sequence = sw.compute_request_sequence()
