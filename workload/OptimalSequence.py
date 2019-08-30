@@ -27,8 +27,7 @@ class RequestSequence():
 
     def compute_sum_F(self):
         sumF = (self._n + 1) * [0]
-        sumF[self._n] = self.compute_F(self._n)
-        for k in range(self._n - 1, 0, -1):
+        for k in range(self._n - 1, -1, -1):
             sumF[k] = self.compute_F(k) + sumF[k + 1]
         return sumF
 
@@ -69,7 +68,7 @@ class TOptimalSequence(RequestSequence):
                 makespan += E_val[0]
                 self._E[j + 1] = E_val
 
-            if min_request == -1 or min_makespan > makespan:
+            if min_request == -1 or min_makespan >= makespan:
                 min_makespan = makespan
                 min_request = j
         return (min_makespan, min_request)
