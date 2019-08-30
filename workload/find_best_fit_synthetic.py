@@ -9,7 +9,7 @@ import sys
 
 import OptimalSequence
 
-sample_count = list(range(500, 5001, 500))
+sample_count = list(range(50, 501, 50))
 bins = 100
 current_distribution = st.truncnorm
 lower_limit = 0
@@ -22,17 +22,21 @@ lower_bound = (lower_limit - mu) / sigma
 def func_exp(x, a, b, c):
     return a * np.exp(b * x) + c
 
-def discreet_cdf(x, histogram, histogram_counts):
-    # find the position in the histogram closest to x
-    cum_histogram = np.cumsum(histogram_counts)
-    min_dist = np.abs(x - histogram[0])
-    count = cum_histogram[0]
-    for bins in range(len(histogram)):
-        dist = np.abs(x - histogram[bins])
-        if dist < min_dist:
-            min_dist = dist
-            count = cum_histogram[bins]
-    return count
+def compute_cost_discret(data):
+    handler = OptimalSequence.TODiscretSequence(upper_limit, data)
+    sequence = handler.compute_request_sequence()
+    print(sequence)
+    arg = [lower_bound, upper_bound]
+    print("optimal cdf",[1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg)
+            for i in range(len(sequence))])
+    print("cdf",[1-cdf(sequence[i])
+            for i in range(len(sequence))])
+    # Compute the expected makespan (MS)
+    MS = sum([sequence[i+1]*(1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg))
+              for i in range(len(sequence)-1)])
+    MS += sequence[0]
+    # MS = sum([sequence[i+1]*cdf(sequence[i]) for i in range(len(sequence)-1)])
+    return MS
 
 def compute_cost(cdf):
     handler = OptimalSequence.TOptimalSequence(lower_limit, upper_limit, cdf, discret_samples=500)
@@ -145,10 +149,9 @@ if __name__ == '__main__':
         print("-----------")
         print("FIT Dataset")
         print("Using the discreet distribution ...")
-        cdf_just_training = lambda val: discreet_cdf(val, x, y)
-        cost_discreet = compute_cost(cdf_just_training)
+        cost_discreet = compute_cost_discret(data)
         df.loc[len(df)] = ["Discreet", "", cost_discreet, count]
-        '''
+        '''        
         print("Using the continuous distribution ...")
         print("-- Polynomial fit")
         best_order = 0
@@ -221,7 +224,7 @@ if __name__ == '__main__':
         print(mu_guess, sigma_guess, arg)
         cdf = lambda val: current_distribution.cdf(val, loc=mu_guess, scale=sigma_guess, *arg)
         cost = compute_cost(cdf)
-        df.loc[len(df)] = ["Clairvoyant", distribution.name, cost, count]
+        df.loc[len(df)] = ["Clairvoyant", current_distribution.name, cost, count]
         break
     
     print(df.head())

@@ -90,3 +90,65 @@ class TOptimalSequence(RequestSequence):
         E_val = self.__compute_E_table(i)
         self._E[i] = E_val
         return E_val
+
+
+class TODiscretSequence(RequestSequence):
+    ''' Sequence that optimizes the total makespan of a job for discret
+    values (instead of a continuous space) '''
+
+    def __init__(self, upper_bound, discret_values):
+        self.discret_values = discret_values
+        self.__prob = 1./len(self.discret_values)
+        self.upper_limit = upper_bound
+        self._E = {}
+        self._request_sequence = []
+        
+        self.__sumF = self.get_discret_sum_F()
+        E_val = self.compute_E_value(0)
+        self.__t1 = self.discret_values[E_val[1]]
+        self.__makespan = E_val[0]
+
+    def get_discret_sum_F(self):
+        sumF = (len(self.discret_values) + 1) * [0]
+        for k in range(len(self.discret_values) - 1, -1, -1):
+            sumF[k] = self.__prob + sumF[k + 1]
+        return sumF
+
+    def __compute_E_table(self, i):
+        if i == len(self.discret_values):
+            return (0, len(self.discret_values))
+
+        min_makespan = -1
+        min_request = -1
+        for j in range(i, len(self.discret_values)):
+            makespan = float(self.__sumF[i] * self.discret_values[j])
+            if j + 1 in self._E:
+                makespan += self._E[j + 1][0]
+            else:
+                E_val = self.__compute_E_table(j + 1)
+                makespan += E_val[0]
+                self._E[j + 1] = E_val
+
+            if min_request == -1 or min_makespan >= makespan:
+                min_makespan = makespan
+                min_request = j
+        return (min_makespan, min_request)
+
+    def compute_request_sequence(self):
+        if len(self._request_sequence) > 0:
+            return self._request_sequence
+        j = 0
+        E_val = self.compute_E_value(j)
+        while E_val[1] < len(self.discret_values):
+            self._request_sequence.append(self.discret_values[E_val[1]])
+            j = E_val[1] + 1
+            E_val = self.compute_E_value(j)
+        self._request_sequence.append(self.upper_limit)
+        return self._request_sequence
+
+    def compute_E_value(self, i):
+        if i in self._E:
+            return self._E[i]
+        E_val = self.__compute_E_table(i)
+        self._E[i] = E_val
+        return E_val
