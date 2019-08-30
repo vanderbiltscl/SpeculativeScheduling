@@ -96,9 +96,9 @@ class TODiscretSequence(RequestSequence):
     ''' Sequence that optimizes the total makespan of a job for discret
     values (instead of a continuous space) '''
 
-    def __init__(self, upper_bound, discret_values):
+    def __init__(self, upper_bound, discret_values, probability_values):
         self.discret_values = discret_values
-        self.__prob = 1./len(self.discret_values)
+        self.__prob = probability_values
         self.upper_limit = upper_bound
         self._E = {}
         self._request_sequence = []
@@ -111,7 +111,7 @@ class TODiscretSequence(RequestSequence):
     def get_discret_sum_F(self):
         sumF = (len(self.discret_values) + 1) * [0]
         for k in range(len(self.discret_values) - 1, -1, -1):
-            sumF[k] = self.__prob + sumF[k + 1]
+            sumF[k] = self.__prob[k] + sumF[k + 1]
         return sumF
 
     def __compute_E_table(self, i):
