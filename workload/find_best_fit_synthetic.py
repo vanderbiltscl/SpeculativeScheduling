@@ -9,15 +9,15 @@ import sys
 
 import OptimalSequence
 
-sample_count = list(range(50, 501, 50))
+sample_count = list(range(500, 5001, 500))
 bins = 100
 current_distribution = st.truncnorm
-lower_bound = 0
-upper_bound = 20
+lower_limit = 0
+upper_limit = 20
 mu = 8
 sigma = 2
-upper_bound = (upper_bound - mu) / sigma
-lower_bound = (lower_bound - mu) / sigma
+upper_bound = (upper_limit - mu) / sigma
+lower_bound = (lower_limit - mu) / sigma
 
 def func_exp(x, a, b, c):
     return a * np.exp(b * x) + c
@@ -35,30 +35,31 @@ def discreet_cdf(x, histogram, histogram_counts):
     return count
 
 def compute_cost(cdf):
-    handler = OptimalSequence.TOptimalSequence(min(walltimes), max(walltimes), cdf, discret_samples=500)
+    handler = OptimalSequence.TOptimalSequence(lower_limit, upper_limit, cdf, discret_samples=500)
     sequence = handler.compute_request_sequence()
+    print(sequence)
+    arg = [lower_bound, upper_bound]
+    print("cdf",[1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg)
+            for i in range(len(sequence))])
     # Compute the expected makespan (MS)
-    MS = sum([sequence[i+1]*cdf(sequence[i] for i in range(len(sequence)-1))])
+    MS = sum([sequence[i]*(1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg))
+              for i in range(len(sequence))])
+    # MS = sum([sequence[i+1]*cdf(sequence[i]) for i in range(len(sequence)-1)])
     return MS
 
 def get_cdf(pdf, start, x):
     return integrate.quad(pdf, start, x, epsrel=1.49e-05)[0]
 
-def best_fit_distribution(x, y, bins, distr=[]): 
-    distr_list = distr
-    if len(distr_list)==0:
+def best_fit_distribution(data, x, y, bins, distr=[]): 
+    dist_list = distr
+    if len(dist_list)==0:
         # Distributions to check
         dist_list = [        
-            st.alpha,st.anglit,st.arcsine,st.beta,st.betaprime,st.bradford,st.burr,st.cauchy,st.chi,st.chi2,st.cosine,
-            st.dgamma,st.dweibull,st.erlang,st.expon,st.exponnorm,st.exponweib,st.exponpow,st.f,st.fatiguelife,st.fisk,
-            st.foldcauchy,st.foldnorm,st.frechet_r,st.frechet_l,st.genlogistic,st.genpareto,st.gennorm,
-            st.genextreme,st.gausshyper,st.gamma,st.gengamma,st.genhalflogistic,st.gilbrat,st.gompertz,st.gumbel_r,
-            st.gumbel_l,st.halfcauchy,st.halflogistic,st.halfnorm,st.halfgennorm,st.hypsecant,st.invgamma,st.invgauss,
-            st.invweibull,st.johnsonsb,st.johnsonsu,st.ksone,st.kstwobign,st.laplace,st.levy,st.levy_l,
-            st.logistic,st.loggamma,st.loglaplace,st.lognorm,st.lomax,st.maxwell,st.mielke,st.nakagami,st.ncx2,st.ncf,
-            st.nct,st.norm,st.pareto,st.pearson3,st.powerlaw,st.powerlognorm,st.powernorm,st.rdist,st.reciprocal,
-            st.rayleigh,st.rice,st.semicircular,st.t,st.triang,st.truncexpon,st.truncnorm,st.tukeylambda,
-            st.uniform,st.vonmises,st.vonmises_line,st.wald,st.weibull_min,st.weibull_max,st.wrapcauchy
+            st.alpha,st.beta,st.cosine,st.dgamma,st.dweibull,st.exponnorm,st.exponweib,
+            st.exponpow,st.genpareto,st.gamma,st.halfnorm,st.invgauss,st.invweibull,
+            st.laplace,st.loggamma,st.lognorm,st.lomax,st.maxwell,st.norm,st.pareto,
+            st.pearson3,st.rayleigh,st.rice,st.truncexpon,st.truncnorm,st.uniform,
+            st.weibull_min,st.weibull_max
         ]
 
     # Best holders
@@ -121,7 +122,7 @@ def generate_workload(distribution, samples_count):
     return pd.Series(all_data)
 
 if __name__ == '__main__':
-    
+
     df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Sample"])
 
     for count in sample_count:
@@ -129,10 +130,11 @@ if __name__ == '__main__':
         print("Number samples: %d" %(count))
         y, x = np.histogram(data, bins=bins, density=True)
         x = (x + np.roll(x, -1))[:-1] / 2.0
-        y = [i/sum(y) for i in y]
+
         print("-----------")
         print("Optimal FIT")
         distribution = current_distribution
+        arg = [lower_bound, upper_bound]
         cdf = lambda val: distribution.cdf(val, loc=mu, scale=sigma, *arg)
         cost = compute_cost(cdf)
         df.loc[len(df)] = ["Optimal", distribution.name, cost, count]
@@ -147,8 +149,10 @@ if __name__ == '__main__':
         print("Using the continuous distribution ...")
         print("-- Polynomial fit")
         best_order = 0
-        best_cost = -1
-        for order in range(1,5):
+        best_cost = np.inf
+        best_err = np.inf
+        best_z = -1
+        for order in range(1,6):
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
                 try:
@@ -156,19 +160,22 @@ if __name__ == '__main__':
                 except:
                     break
                 err = np.sum((np.polyval(z, x) - y)**2)
-                try:
-                    pdf = get_pdf(x,z,bins)
-                    cdf = lambda val: get_cdf(pdf, x[0], val)
-                    print("---- Polynomial Order", order)
-                    cost = compute_cost(cdf)
-                    if best_cost == -1 or cost < best_cost:
-                        best_cost = cost
-                        best_order = "Polynomial "+str(order)
-                except:
-                    continue
-
+                if err < best_err:
+                    best_order = order
+                    best_z = z
+        try:
+            pdf = get_pdf(x,z,bins)
+            cdf = lambda val: get_cdf(pdf, x[0], val)
+            print("---- Polynomial Order", order)
+            cost = compute_cost(cdf)
+            if cost < best_cost:
+                best_cost = cost
+                best_order = "Polynomial "+str(best_order)
+        except:
+            pass
+        
         print("-- Distribution fit")
-        distribution, params, err = best_fit_distribution(x, y, bins)
+        distribution, params, err = best_fit_distribution(data, x, y, bins)
         arg = params[:-2]
         cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
         cost = compute_cost(cdf)
@@ -177,21 +184,26 @@ if __name__ == '__main__':
             best_order = distribution.name
 
         print("-- Exponantial fit")
-        popt, pcov = curve_fit(func_exp, x, y)
-        pdf = lambda val: func_exp(val, *popt)
-        cdf = lambda val: get_cdf(pdf, x[0], val)
-        cost = compute_cost(cdf)
-        if cost < best_cost:
-            best_cost = cost
-            best_order = "Exponential"
+        try:
+            popt, pcov = curve_fit(func_exp, x, y)
+            pdf = lambda val: func_exp(val, *popt)
+            cdf = lambda val: get_cdf(pdf, x[0], val)
+            cost = compute_cost(cdf)
+            if cost < best_cost:
+                best_cost = cost
+                best_order = "Exponential"
+        except:
+            pass
+
         df.loc[len(df)] = ["Continuous", best_order, best_cost, count]
-        
+
         print("-----------")
         print("Semi-clairvoyant FIT")
-        distribution, params, err = best_fit_distribution(x, y, bins, distr=[current_distribution])
+        distribution, params, err = best_fit_distribution(data, x, y, bins, distr=[st.norm])
         if err==np.inf:
             df.loc[len(df)] = ["Semi-clairvoyant", distribution.name, -1, count]
         else:
+            print(params[-2], params[-1], params[:-2])
             arg = params[:-2]
             cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
             cost = compute_cost(cdf)
@@ -202,11 +214,14 @@ if __name__ == '__main__':
         distribution = current_distribution
         mu_guess = np.mean(data)
         sigma_guess = np.std(data)
+        arg = [min(data), max(data)]
+        print(mu_guess, sigma_guess, arg)
         cdf = lambda val: distribution.cdf(val, loc=mu_guess, scale=sigma_guess, *arg)
         cost = compute_cost(cdf)
         df.loc[len(df)] = ["Clairvoyant", distribution.name, cost, count]
+        break
     
     print(df.head())
-    with open("ACCRE/"+dataset+"_synthetic.csv", 'a') as f:
+    with open("./"+distribution.name+"_synthetic.csv", 'a') as f:
         df.to_csv(f, header=True)
         
