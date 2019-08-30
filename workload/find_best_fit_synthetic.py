@@ -39,11 +39,14 @@ def compute_cost(cdf):
     sequence = handler.compute_request_sequence()
     print(sequence)
     arg = [lower_bound, upper_bound]
-    print("cdf",[1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg)
+    print("optimal cdf",[1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg)
+            for i in range(len(sequence))])
+    print("cdf",[1-cdf(sequence[i])
             for i in range(len(sequence))])
     # Compute the expected makespan (MS)
-    MS = sum([sequence[i]*(1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg))
-              for i in range(len(sequence))])
+    MS = sum([sequence[i+1]*(1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg))
+              for i in range(len(sequence)-1)])
+    MS += sequence[0]
     # MS = sum([sequence[i+1]*cdf(sequence[i]) for i in range(len(sequence)-1)])
     return MS
 
@@ -145,7 +148,7 @@ if __name__ == '__main__':
         cdf_just_training = lambda val: discreet_cdf(val, x, y)
         cost_discreet = compute_cost(cdf_just_training)
         df.loc[len(df)] = ["Discreet", "", cost_discreet, count]
-
+        '''
         print("Using the continuous distribution ...")
         print("-- Polynomial fit")
         best_order = 0
@@ -196,7 +199,7 @@ if __name__ == '__main__':
             pass
 
         df.loc[len(df)] = ["Continuous", best_order, best_cost, count]
-
+        '''
         print("-----------")
         print("Semi-clairvoyant FIT")
         distribution, params, err = best_fit_distribution(data, x, y, bins, distr=[st.norm])
@@ -211,12 +214,12 @@ if __name__ == '__main__':
 
         print("-----------")
         print("Clairvoyant FIT")
-        distribution = current_distribution
+        #distribution = current_distribution
         mu_guess = np.mean(data)
         sigma_guess = np.std(data)
-        arg = [min(data), max(data)]
+        arg = [(min(data) - mu_guess) / sigma_guess, (max(data) - mu_guess) / sigma_guess]
         print(mu_guess, sigma_guess, arg)
-        cdf = lambda val: distribution.cdf(val, loc=mu_guess, scale=sigma_guess, *arg)
+        cdf = lambda val: current_distribution.cdf(val, loc=mu_guess, scale=sigma_guess, *arg)
         cost = compute_cost(cdf)
         df.loc[len(df)] = ["Clairvoyant", distribution.name, cost, count]
         break
