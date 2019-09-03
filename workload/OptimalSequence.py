@@ -1,3 +1,5 @@
+import numpy as np
+
 class RequestSequence():
 
     def __init__(self, lower_bound, upper_bound, CDF_func,
@@ -18,16 +20,11 @@ class RequestSequence():
         fi = self.CDF_func(vi)
         if i > 0:
             fi -= self.CDF_func(vi-self._delta)
-        return fi
-
-    def compute_FV(self, i):
-        vi = (self._a + self._delta * i)
-        fi = self.compute_F(i)
-        return vi * fi
+        return np.abs(fi) / self.CDF_func(self._b)
 
     def compute_sum_F(self):
         sumF = (self._n + 1) * [0]
-        for k in range(self._n - 1, -1, -1):
+        for k in range(self._n - 1, 0, -1):
             sumF[k] = self.compute_F(k) + sumF[k + 1]
         return sumF
 
