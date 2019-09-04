@@ -18,6 +18,8 @@ class RequestSequence():
     def compute_F(self, i):
         vi = (self._a + self._delta * i)
         fi = self.CDF_func(vi)
+        if np.isnan(fi):
+            fi=0
         if i > 0:
             fi -= self.CDF_func(vi-self._delta)
         if np.isnan(fi):
