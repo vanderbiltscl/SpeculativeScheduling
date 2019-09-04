@@ -9,7 +9,7 @@ import sys
 
 import OptimalSequence
 
-sample_count = list(range(310, 511, 50))
+sample_count = list(range(10, 101, 10)) + list(range(110, 511, 50))
 bins = 100
 current_distribution = st.truncnorm
 lower_limit = 0
@@ -57,10 +57,6 @@ def compute_cost(cdf):
     if verbose:
         print(sequence)
     arg = [lower_bound, upper_bound]
-    #print("optimal cdf",[1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg)
-    #        for i in range(len(sequence))])
-    #print("cdf",[1-cdf(sequence[i])
-    #        for i in range(len(sequence))])
     
     # Compute the expected makespan (MS)
     MS = sum([sequence[i+1]*(1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg))
@@ -96,7 +92,6 @@ def best_fit_distribution(data, x, y, bins, distr=[]):
         sys.stdout.write("\b" * (progressbar_width + 1))
     # Estimate distribution parameters from data
     for distribution in dist_list:
-
         # Try to fit the distribution
         try:
             # Ignore warnings from data that can't be fit
@@ -114,9 +109,6 @@ def best_fit_distribution(data, x, y, bins, distr=[]):
                 # Calculate fitted PDF and error with fit in distribution
                 pdf = distribution.pdf(x, loc=loc, scale=scale, *arg)
                 sse = np.sum(np.power(y - pdf, 2.0))
-                
-                if distribution.name == "norm" or distribution.name == "truncnorm" or distribution.name=="pearson3":
-                    print(distribution.name, params, sse)
 
                 # identify if this distribution is better
                 if best_sse > sse > 0:
@@ -154,7 +146,7 @@ if __name__ == '__main__':
     if len(sys.argv)>1:
         verbose = True
 
-    df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Sample"])
+    df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Sample", "EML"])
 
     for count in sample_count:
         data = generate_workload(current_distribution, count)
@@ -168,14 +160,14 @@ if __name__ == '__main__':
         distribution = current_distribution
         arg = [lower_bound, upper_bound]
         cdf = lambda val: distribution.cdf(val, loc=mu, scale=sigma, *arg)
-        cost = compute_cost(cdf)
-        df.loc[len(df)] = ["Optimal", distribution.name, cost, count]
+        optimal_cost = compute_cost(cdf)
+        df.loc[len(df)] = ["Optimal", distribution.name, optimal_cost, count, 0]
 
         if verbose:
             print("-----------")
             print("Discreet FIT")
         cost_discreet = compute_cost_discret(data)
-        df.loc[len(df)] = ["Discreet", "", cost_discreet, count]
+        df.loc[len(df)] = ["Discreet", "", cost_discreet, count, (cost_discreet-optimal_cost)*1./optimal_cost]
 
         if verbose:
             print("-----------")
@@ -209,44 +201,30 @@ if __name__ == '__main__':
                 best_order = "Polynomial "+str(best_order)
         except:
             pass
-        ''' 
+        '''
         if verbose:
             print("-- Distribution fit")
         distribution, params, err = best_fit_distribution(data, x, y, bins)
         arg = params[:-2]
-        cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
-        cost = compute_cost(cdf)
-        if cost < best_cost:
-            best_cost = cost
-            best_order = distribution.name
-        ''' 
-        if verbose:
-            print("-- Exponantial fit")
-        try:
-            popt, pcov = curve_fit(func_exp, x, y)
-            pdf = lambda val: func_exp(val, *popt)
-            cdf = lambda val: get_cdf(pdf, x[0], val)
+        # if the cdf of the first element is almost 1, this is not a good fit
+        if not np.isclose(distribution.cdf(0, loc=params[-2], scale=params[-1], *arg), 1, rtol=1e-03):            
+            cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
             cost = compute_cost(cdf)
             if cost < best_cost:
                 best_cost = cost
-                best_order = "Exponential"
-        except:
-            pass
-        ''' 
-        df.loc[len(df)] = ["Continuous", best_order, best_cost, count]
+                best_order = distribution.name
+
+        df.loc[len(df)] = ["Continuous", best_order, best_cost, count, (best_cost-optimal_cost)*1./optimal_cost]
 
         if verbose:
             print("-----------")
             print("Semi-clairvoyant FIT")
         distribution, params, err = best_fit_distribution(data, x, y, bins, distr=[st.norm])
-        if err==np.inf:
-            df.loc[len(df)] = ["Semi-clairvoyant", distribution.name, -1, count]
-        else:
-            #print(params[-2], params[-1], params[:-2])
+        if err!=np.inf:
             arg = params[:-2]
             cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
             cost = compute_cost(cdf)
-            df.loc[len(df)] = ["Semi-clairvoyant", distribution.name, cost, count]
+            df.loc[len(df)] = ["Semi-clairvoyant", distribution.name, cost, count, (cost-optimal_cost)*1./optimal_cost]
 
         if verbose:
             print("-----------")
@@ -258,11 +236,9 @@ if __name__ == '__main__':
         #print(mu_guess, sigma_guess, arg)
         cdf = lambda val: current_distribution.cdf(val, loc=mu_guess, scale=sigma_guess, *arg)
         cost = compute_cost(cdf)
-        df.loc[len(df)] = ["Clairvoyant", current_distribution.name, cost, count]
-        
-        break
+        df.loc[len(df)] = ["Clairvoyant", current_distribution.name, cost, count, (cost-optimal_cost)*1./optimal_cost]
 
-    print(df.head())
+    #print(df.head())
     with open("./"+current_distribution.name+"_synthetic.csv", 'a') as f:
         df.to_csv(f, header=True)
         
