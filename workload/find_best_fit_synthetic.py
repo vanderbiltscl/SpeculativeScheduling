@@ -51,9 +51,11 @@ def compute_cost_discret(data):
     MS += sequence[0]
     return MS
 
-def compute_cost(cdf):
-    handler = OptimalSequence.TOptimalSequence(lower_limit, upper_limit, cdf, discret_samples=500)
+def compute_cost(cdf, limits = [lower_limit, upper_limit]):
+    handler = OptimalSequence.TOptimalSequence(limits[0], limits[1], cdf, discret_samples=500)
     sequence = handler.compute_request_sequence()
+    if sequence[-1]!=upper_limit:
+        sequence[-1] = upper_limit
     if verbose:
         print(sequence)
     arg = [lower_bound, upper_bound]
@@ -65,8 +67,8 @@ def compute_cost(cdf):
     # MS = sum([sequence[i+1]*cdf(sequence[i]) for i in range(len(sequence)-1)])
     return MS
 
-def get_cdf(pdf, start, x):
-    return integrate.quad(pdf, start, x, epsrel=1.49e-05)[0]
+def get_cdf(start, x, params):
+    return integrate.quad(np.poly1d(params), start, x, epsrel=1.49e-05)[0]
 
 def best_fit_distribution(data, x, y, bins, distr=[]): 
     dist_list = distr
@@ -127,15 +129,6 @@ def best_fit_distribution(data, x, y, bins, distr=[]):
         sys.stdout.write("]\n")
     return (best_distribution, best_params, best_sse)
 
-def get_pdf(data, params, bins):
-    f = np.poly1d(params)
-    # compute the integral from xp[0] to xp[-1]
-    area = integrate.quad(f, data[0], data[-1], epsrel=1.49e-05)
-    if np.isclose(area[0], 1, rtol=1e-03):
-        return f
-    params = [i/area[0] for i in params]
-    return np.poly1d(params)
-
 def generate_workload(distribution, samples_count):
     all_data = distribution.rvs(lower_bound, upper_bound,
                              loc=mu, scale=sigma, size=samples_count)
@@ -175,7 +168,7 @@ if __name__ == '__main__':
         
         best_order = 0
         best_cost = np.inf
-        ''' 
+
         if verbose:
             print("-- Polynomial fit")
         best_err = np.inf
@@ -191,17 +184,16 @@ if __name__ == '__main__':
                 if err < best_err:
                     best_order = order
                     best_z = z
+                    best_err = err
         try:
-            pdf = get_pdf(x,z,bins)
-            cdf = lambda val: get_cdf(pdf, x[0], val)
-            print("---- Polynomial Order", order)
-            cost = compute_cost(cdf)
+            cdf = lambda val: get_cdf(x[0], val, best_z)
+            cost = compute_cost(cdf, limits=[x[0], x[-1]])
             if cost < best_cost:
                 best_cost = cost
                 best_order = "Polynomial "+str(best_order)
         except:
             pass
-        '''
+
         if verbose:
             print("-- Distribution fit")
         distribution, params, err = best_fit_distribution(data, x, y, bins)
