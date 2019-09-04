@@ -20,6 +20,8 @@ class RequestSequence():
         fi = self.CDF_func(vi)
         if i > 0:
             fi -= self.CDF_func(vi-self._delta)
+        if np.isnan(fi):
+            fi=0
         return np.abs(fi) / self.CDF_func(self._b)
 
     def compute_sum_F(self):
