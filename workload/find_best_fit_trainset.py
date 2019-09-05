@@ -9,25 +9,55 @@ import sys
 
 import OptimalSequence
 
+optimal_sequence = []
+
 def func_exp(x, a, b, c):
     return a * np.exp(b * x) + c
 
-def discreet_cdf(x, histogram, histogram_counts):
-    # find the position in the histogram closest to x
-    cum_histogram = np.cumsum(histogram_counts)
-    min_dist = np.abs(x - histogram[0])
-    count = cum_histogram[0]
-    for bins in range(len(histogram)):
-        dist = np.abs(x - histogram[bins])
-        if dist < min_dist:
-            min_dist = dist
-            count = cum_histogram[bins]
-    return count
+def compute_cost_discret(data, testing, optimal=False):
+    global optimal_sequence
+    sequence = optimal_sequence
+    if not optimal or len(optimal_sequence) == 0:
+        # sort data and merge entries with the same value
+        discret_data = sorted(data)
+        cdf = [1 for _ in data]
+        todel = []
+        for i in range(len(data)-1):
+            if discret_data[i] == discret_data[i + 1]:
+                todel.append(i)
+                cdf[i + 1] += 1
+        todel.sort(reverse=True)
+        for i in todel:
+            del discret_data[i]
+            del cdf[i]
+        cdf = [i*1./len(cdf) for i in cdf]
+
+        # compute cost
+        handler = OptimalSequence.TODiscretSequence(max(testing), discret_data, cdf)
+        sequence = handler.compute_request_sequence()
+    if optimal:
+        optimal_sequence = sequence[:]
+        print("Optimal sequence:", optimal_sequence)
+        
+    cost = 0
+    for instance in testing:
+        # get the sum of all the values in the sequences <= current walltime
+        cost += sum([i for i in sequence if i < instance])
+        # add the first reservation that is >= current walltime
+        idx = 0
+        if len(sequence) > 1:
+            idx_list = [i for i in range(1,len(sequence)) if
+                        sequence[i-1] < instance and sequence[i] >= instance]
+            if len(idx_list) > 0:
+                idx = idx_list[0]
+        cost += sequence[idx]
+    cost = cost / len(testing)
+    return cost
+    
 
 def compute_cost(cdf, walltimes):
-    handler = OptimalSequence.TOptimalSequence(min(walltimes), max(walltimes), cdf, discret_samples=bins)
+    handler = OptimalSequence.TOptimalSequence(min(walltimes), max(walltimes), cdf, discret_samples=500)
     sequence = handler.compute_request_sequence()
-    #print(sequence)
     cost = 0
     for instance in walltimes:
         # get the sum of all the values in the sequences <= current walltime
@@ -43,23 +73,20 @@ def compute_cost(cdf, walltimes):
     cost = cost / len(walltimes)
     return cost
 
-def get_cdf(pdf, start, x):
-    return integrate.quad(pdf, start, x, epsrel=1.49e-05)[0]
+def get_cdf(start, x, params):
+    return integrate.quad(np.poly1d(params), start, x, epsrel=1.49e-05)[0]
 
-def best_fit_distribution(x, y, bins):   
-    # Distributions to check
-    dist_list = [        
-        st.alpha,st.anglit,st.arcsine,st.beta,st.betaprime,st.bradford,st.burr,st.cauchy,st.chi,st.chi2,st.cosine,
-        st.dgamma,st.dweibull,st.erlang,st.expon,st.exponnorm,st.exponweib,st.exponpow,st.f,st.fatiguelife,st.fisk,
-        st.foldcauchy,st.foldnorm,st.frechet_r,st.frechet_l,st.genlogistic,st.genpareto,st.gennorm,
-        st.genextreme,st.gausshyper,st.gamma,st.gengamma,st.genhalflogistic,st.gilbrat,st.gompertz,st.gumbel_r,
-        st.gumbel_l,st.halfcauchy,st.halflogistic,st.halfnorm,st.halfgennorm,st.hypsecant,st.invgamma,st.invgauss,
-        st.invweibull,st.johnsonsb,st.johnsonsu,st.ksone,st.kstwobign,st.laplace,st.levy,st.levy_l,
-        st.logistic,st.loggamma,st.loglaplace,st.lognorm,st.lomax,st.maxwell,st.mielke,st.nakagami,st.ncx2,st.ncf,
-        st.nct,st.norm,st.pareto,st.pearson3,st.powerlaw,st.powerlognorm,st.powernorm,st.rdist,st.reciprocal,
-        st.rayleigh,st.rice,st.semicircular,st.t,st.triang,st.truncexpon,st.truncnorm,st.tukeylambda,
-        st.uniform,st.vonmises,st.vonmises_line,st.wald,st.weibull_min,st.weibull_max,st.wrapcauchy
-    ]
+def best_fit_distribution(data, x, y, bins, distr=[], verbose=True): 
+    dist_list = distr
+    if len(dist_list)==0:
+        # Distributions to check
+        dist_list = [        
+            st.alpha,st.beta,st.cosine,st.dgamma,st.dweibull,st.exponnorm,st.exponweib,
+            st.exponpow,st.genpareto,st.gamma,st.halfnorm,st.invgauss,st.invweibull,
+            st.laplace,st.loggamma,st.lognorm,st.lomax,st.maxwell,st.norm,st.pareto,
+            st.pearson3,st.rayleigh,st.rice,st.truncexpon,st.truncnorm,st.uniform,
+            st.weibull_min,st.weibull_max
+        ]
 
     # Best holders
     best_distribution = st.norm
@@ -67,12 +94,12 @@ def best_fit_distribution(x, y, bins):
     best_sse = np.inf
 
     progressbar_width = len(dist_list)
-    sys.stdout.write("[%s]" % ("." * progressbar_width))
-    sys.stdout.flush()
-    sys.stdout.write("\b" * (progressbar_width + 1))
+    if verbose:
+        sys.stdout.write("[%s]" % ("." * progressbar_width))
+        sys.stdout.flush()
+        sys.stdout.write("\b" * (progressbar_width + 1))
     # Estimate distribution parameters from data
     for distribution in dist_list:
-
         # Try to fit the distribution
         try:
             # Ignore warnings from data that can't be fit
@@ -100,20 +127,13 @@ def best_fit_distribution(x, y, bins):
         except Exception:
             pass
 
-        sys.stdout.write("=")
-        sys.stdout.flush()
-        
-    sys.stdout.write("]\n")
-    return (best_distribution, best_params, best_sse)
+        if verbose:
+            sys.stdout.write("=")
+            sys.stdout.flush()
 
-def get_pdf(data, params, bins):
-    f = np.poly1d(params)
-    # compute the integral from xp[0] to xp[-1]
-    area = integrate.quad(f, data[0], data[-1], epsrel=1.49e-05)
-    if np.isclose(area[0], 1, rtol=1e-03):
-        return f
-    params = [i/area[0] for i in params]
-    return np.poly1d(params)
+    if verbose:
+        sys.stdout.write("]\n")
+    return (best_distribution, best_params, best_sse)
 
 def load_workload():
     all_data = np.loadtxt("ACCRE/"+dataset+".out", delimiter=' ')
@@ -121,7 +141,7 @@ def load_workload():
     return pd.Series(all_data)
 
 if __name__ == '__main__':
-    train_perc = list(range(10, 101, 10))
+    train_perc = list(range(10, 511, 50))
 
     if len(sys.argv) < 2:
         print("Usage: %s dataset_file [number_of_bins]" %(sys.argv[0]))
@@ -132,47 +152,43 @@ if __name__ == '__main__':
     dataset = dataset[:-4]
 
     all_data = load_workload()
-    if len(all_data) < 4000:
+    if len(all_data)<600:
         exit()
-    df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Trainset"])
-
-    if len(sys.argv) > 2:
-        bins = int(sys.argv[2])
-    else:
-        bins = int(len(all_data)/10)
-        bins = min(int(bins/100)*100, 800)
+    df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Trainset", "EML"])
+    bins = 100
+    random_start = np.random.randint(0, len(all_data)-600)
 
     for perc in train_perc:
-        print(perc/100, bins)
-        test_cnt = int(len(all_data)*perc/100)
+        print(perc, bins)
+        test_cnt = perc #int(len(all_data)*perc/100)
         testing = all_data[:] #[test_cnt:]
-        data =  all_data[:test_cnt]
+        data =  all_data[random_start:random_start+test_cnt]
         data = data.append(pd.Series(max(all_data)))
 
+        print(len(data), len(testing))
         y, x = np.histogram(data, bins=bins, density=True)
         x = (x + np.roll(x, -1))[:-1] / 2.0
-        y = [i/sum(y) for i in y]
+        yall, xall = np.histogram(all_data, bins=bins, density=True)
+        xall = (xall + np.roll(xall, -1))[:-1] / 2.0
 
+        optimal_cost = compute_cost_discret(all_data, testing, optimal=True)
+        df.loc[len(df)] = ["Optimal", bins, optimal_cost, perc, 0]
+        
         print("----------")
         print("TRAIN SET ",perc)
         print("----------")
         print("Using the discreet distribution ...")
-        cdf_just_training = lambda val: discreet_cdf(val, x, y)
-        cost_discreet = compute_cost(cdf_just_training, testing)
-        df.loc[len(df)] = ["Discreet", "", cost_discreet, perc]
-
-        yall, xall = np.histogram(all_data, bins=bins, density=True)
-        xall = (xall + np.roll(xall, -1))[:-1] / 2.0
-        yall = [i/sum(yall) for i in yall]
-        cdf_all_data = lambda val: discreet_cdf(val, xall, yall)
-        cost_discreet_all = compute_cost(cdf_all_data, testing)
-        df.loc[len(df)] = ["Optimal", bins, cost_discreet_all, perc]
+        cost_discreet = compute_cost_discret(data, testing)
+        df.loc[len(df)] = ["Discreet", "", cost_discreet, perc, (cost_discreet-optimal_cost)*1./optimal_cost]
 
         print("Using the continuous distribution ...")
-        print("-- Polynomial fit")
         best_order = 0
-        best_cost = -1
-        for order in range(1,30):
+        best_cost = np.inf
+
+        print("-- Polynomial fit")
+        best_err = np.inf
+        best_z = -1
+        for order in range(1,6):
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
                 try:
@@ -180,34 +196,41 @@ if __name__ == '__main__':
                 except:
                     break
                 err = np.sum((np.polyval(z, x) - y)**2)
-                try:
-                    pdf = get_pdf(x,z,bins)
-                    cdf = lambda val: get_cdf(pdf, x[0], val)
-                    print("---- Polynomial Order", order)
-                    cost = compute_cost(cdf, testing)
-                    if best_cost == -1 or cost < best_cost:
-                        best_cost = cost
-                        best_order = order
-                except:
-                    continue
-        df.loc[len(df)] = ["Polynomial", best_order, best_cost, perc]
+                if err < best_err:
+                    best_order = order
+                    best_z = z
+                    best_err = err
+        try:
+            cdf = lambda val: get_cdf(x[0], val, best_z)
+            cost = compute_cost(cdf, testing)
+            if cost < best_cost:
+                best_cost = cost
+                best_order = "Polynomial "+str(best_order)
+        except:
+            pass
 
         print("-- Distribution fit")
-        distribution, params, err = best_fit_distribution(x, y, bins)
+        distribution, params, err = best_fit_distribution(data, x, y, bins)
         arg = params[:-2]
-        cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
-        cost = compute_cost(cdf, testing)
-        df.loc[len(df)] = [distribution.name, "", cost, perc]
-        # String of the distribution parameters: str(params[-2])+" "+str(params[-1])
+        # if the cdf of the first element is almost 1, this is not a good fit
+        if not np.isclose(distribution.cdf(0, loc=params[-2], scale=params[-1], *arg), 1, rtol=1e-03):            
+            cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
+            cost = compute_cost(cdf, testing)
+            if cost < best_cost:
+                best_cost = cost
+                best_order = distribution.name
 
         print("-- Exponantial fit")
         popt, pcov = curve_fit(func_exp, x, y)
         pdf = lambda val: func_exp(val, *popt)
-        cdf = lambda val: get_cdf(pdf, x[0], val)
+        cdf = lambda val: integrate.quad(pdf, x[0], val, epsrel=1.49e-05)[0]
         cost = compute_cost(cdf, testing)
-        df.loc[len(df)] = ["Exponential", "", cost, perc]
+        if cost < best_cost:
+                best_cost = cost
+                best_order = "Exponential"
+        
+        df.loc[len(df)] = ["Continuous", best_order, best_cost, perc, (best_cost-optimal_cost)*1./optimal_cost]
 
-    print(df)
-    with open("ACCRE/"+dataset+"_trainset_10perc.csv", 'a') as f:
+    with open("ACCRE/"+dataset+"_trainset.csv", 'a') as f:
         df.to_csv(f, header=True)
         
