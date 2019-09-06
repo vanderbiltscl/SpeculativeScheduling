@@ -84,7 +84,9 @@ def best_fit_distribution(data, x, y, bins, distr=[], verbose=True):
             st.alpha,st.beta,st.cosine,st.dgamma,st.dweibull,st.exponnorm,st.exponweib,
             st.exponpow,st.genpareto,st.gamma,st.halfnorm,st.invgauss,st.invweibull,
             st.laplace,st.loggamma,st.lognorm,st.lomax,st.maxwell,st.norm,st.pareto,
-            st.pearson3,st.rayleigh,st.rice,st.truncexpon,st.truncnorm,st.uniform,
+            #st.pearson3,
+            st.rayleigh,#st.rice,
+            st.truncexpon,st.truncnorm,st.uniform,
             st.weibull_min,st.weibull_max
         ]
 
@@ -231,6 +233,6 @@ if __name__ == '__main__':
         
         df.loc[len(df)] = ["Continuous", best_order, best_cost, perc, (best_cost-optimal_cost)*1./optimal_cost]
 
-    with open("ACCRE/"+dataset+"_trainset.csv", 'a') as f:
+    with open("ACCRE/"+dataset+"_eml_ts.csv", 'a') as f:
         df.to_csv(f, header=True)
         
