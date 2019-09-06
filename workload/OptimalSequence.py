@@ -1,3 +1,5 @@
+import numpy as np
+
 class RequestSequence():
 
     def __init__(self, lower_bound, upper_bound, CDF_func,
@@ -16,18 +18,17 @@ class RequestSequence():
     def compute_F(self, i):
         vi = (self._a + self._delta * i)
         fi = self.CDF_func(vi)
+        if np.isnan(fi):
+            fi=0
         if i > 0:
             fi -= self.CDF_func(vi-self._delta)
-        return fi
-
-    def compute_FV(self, i):
-        vi = (self._a + self._delta * i)
-        fi = self.compute_F(i)
-        return vi * fi
+        if np.isnan(fi):
+            fi=0
+        return fi / self.CDF_func(self._b)
 
     def compute_sum_F(self):
         sumF = (self._n + 1) * [0]
-        for k in range(self._n - 1, -1, -1):
+        for k in range(self._n - 1, 0, -1):
             sumF[k] = self.compute_F(k) + sumF[k + 1]
         return sumF
 
@@ -134,6 +135,23 @@ class TODiscretSequence(RequestSequence):
                 min_request = j
         return (min_makespan, min_request)
 
+    def __compute_E_table_iter(self, first):
+        self._E[len(self.discret_values)] = (0, len(self.discret_values))
+        for i in range(len(self.discret_values) - 1, first - 1, -1):
+            if i in self._E:
+                continue
+            min_makespan = -1
+            min_request = -1
+            for j in range(i, len(self.discret_values)):
+                makespan = float(self.__sumF[i] * self.discret_values[j])
+                makespan += self._E[j + 1][0]
+
+                if min_request == -1 or min_makespan >= makespan:
+                    min_makespan = makespan
+                    min_request = j
+            self._E[i] = (min_makespan, min_request)
+        return self._E[first]
+
     def compute_request_sequence(self):
         if len(self._request_sequence) > 0:
             return self._request_sequence
@@ -149,6 +167,9 @@ class TODiscretSequence(RequestSequence):
     def compute_E_value(self, i):
         if i in self._E:
             return self._E[i]
-        E_val = self.__compute_E_table(i)
+        if len(self.discret_values)<600:
+            E_val = self.__compute_E_table(i)
+        else:
+            E_val = self.__compute_E_table_iter(i)
         self._E[i] = E_val
         return E_val
