@@ -12,15 +12,12 @@ import OptimalSequence
 sample_count = list(range(10, 101, 10)) + list(range(110, 511, 50))
 bins = 100
 current_distribution = st.truncnorm
-lower_limit = 0
-upper_limit = 20
+lower_limit = 6
+upper_limit = 10
 mu = 8
-sigma = 2
+sigma = 8
 upper_bound = (upper_limit - mu) / sigma
 lower_bound = (lower_limit - mu) / sigma
-
-def func_exp(x, a, b, c):
-    return a * np.exp(b * x) + c
 
 def compute_cost_discret(data):
     # sort data and merge entries with the same value
