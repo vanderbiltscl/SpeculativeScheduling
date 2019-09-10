@@ -6,6 +6,7 @@ from scipy.stats import truncnorm
 import scipy.stats as st
 from scipy.optimize import curve_fit
 import sys
+import random
 
 import OptimalSequence
 
@@ -25,7 +26,7 @@ def compute_cost_discret(data, testing, optimal=False):
         for i in range(len(data)-1):
             if discret_data[i] == discret_data[i + 1]:
                 todel.append(i)
-                cdf[i + 1] += 1
+                cdf[i + 1] += cdf[i]
         todel.sort(reverse=True)
         for i in todel:
             del discret_data[i]
@@ -35,10 +36,10 @@ def compute_cost_discret(data, testing, optimal=False):
         # compute cost
         handler = OptimalSequence.TODiscretSequence(max(testing), discret_data, cdf)
         sequence = handler.compute_request_sequence()
-    if optimal:
-        optimal_sequence = sequence[:]
-        print("Optimal sequence:", optimal_sequence)
-        
+        if optimal:
+            optimal_sequence = sequence[:]
+            print("Optimal sequence:", optimal_sequence)
+    print(sequence)
     cost = 0
     for instance in testing:
         # get the sum of all the values in the sequences <= current walltime
@@ -58,6 +59,7 @@ def compute_cost_discret(data, testing, optimal=False):
 def compute_cost(cdf, walltimes):
     handler = OptimalSequence.TOptimalSequence(min(walltimes), max(walltimes), cdf, discret_samples=500)
     sequence = handler.compute_request_sequence()
+    print(sequence)
     cost = 0
     for instance in walltimes:
         # get the sum of all the values in the sequences <= current walltime
@@ -73,7 +75,11 @@ def compute_cost(cdf, walltimes):
     cost = cost / len(walltimes)
     return cost
 
-def get_cdf(start, x, params):
+def get_cdf(start, x, params, end):
+    if x >= end:
+        return 1
+    if x <= start:
+        return 0
     return integrate.quad(np.poly1d(params), start, x, epsrel=1.49e-05)[0]
 
 def best_fit_distribution(data, x, y, bins, distr=[], verbose=True): 
@@ -84,7 +90,9 @@ def best_fit_distribution(data, x, y, bins, distr=[], verbose=True):
             st.alpha,st.beta,st.cosine,st.dgamma,st.dweibull,st.exponnorm,st.exponweib,
             st.exponpow,st.genpareto,st.gamma,st.halfnorm,st.invgauss,st.invweibull,
             st.laplace,st.loggamma,st.lognorm,st.lomax,st.maxwell,st.norm,st.pareto,
-            st.pearson3,st.rayleigh,st.rice,st.truncexpon,st.truncnorm,st.uniform,
+            #st.pearson3,
+            st.rayleigh,#st.rice,
+            st.truncexpon,st.truncnorm,st.uniform,
             st.weibull_min,st.weibull_max
         ]
 
@@ -157,15 +165,15 @@ if __name__ == '__main__':
     df = pd.DataFrame(columns=["Function", "Parameters", "Cost", "Trainset", "EML"])
     bins = 100
     random_start = np.random.randint(0, len(all_data)-600)
+    #random.shuffle(all_data) 
 
     for perc in train_perc:
-        print(perc, bins)
+        #print(perc, bins)
         test_cnt = perc #int(len(all_data)*perc/100)
         testing = all_data[:] #[test_cnt:]
         data =  all_data[random_start:random_start+test_cnt]
-        data = data.append(pd.Series(max(all_data)))
-
-        print(len(data), len(testing))
+        #data = data.append(pd.Series(max(all_data)))
+        #data = data.append(pd.Series(min(all_data)))
         y, x = np.histogram(data, bins=bins, density=True)
         x = (x + np.roll(x, -1))[:-1] / 2.0
         yall, xall = np.histogram(all_data, bins=bins, density=True)
@@ -188,7 +196,7 @@ if __name__ == '__main__':
         print("-- Polynomial fit")
         best_err = np.inf
         best_z = -1
-        for order in range(1,6):
+        for order in range(1,10):
             with warnings.catch_warnings():
                 warnings.simplefilter("error")
                 try:
@@ -197,11 +205,15 @@ if __name__ == '__main__':
                     break
                 err = np.sum((np.polyval(z, x) - y)**2)
                 if err < best_err:
-                    best_order = order
-                    best_z = z
-                    best_err = err
+                    cdf = lambda val: get_cdf(x[0], val, z, x[-1])
+                    cost = compute_cost(cdf, testing)
+                    #print("order",order, x[0], x[-1], cdf(min(testing)), cdf(max(testing)), cost)
+                    if cost < best_cost:
+                        best_order = order
+                        best_z = z
+                        best_err = err
         try:
-            cdf = lambda val: get_cdf(x[0], val, best_z)
+            cdf = lambda val: get_cdf(x[0], val, best_z, x[-1])
             cost = compute_cost(cdf, testing)
             if cost < best_cost:
                 best_cost = cost
@@ -219,7 +231,7 @@ if __name__ == '__main__':
             if cost < best_cost:
                 best_cost = cost
                 best_order = distribution.name
-
+        '''
         print("-- Exponantial fit")
         popt, pcov = curve_fit(func_exp, x, y)
         pdf = lambda val: func_exp(val, *popt)
@@ -228,9 +240,10 @@ if __name__ == '__main__':
         if cost < best_cost:
                 best_cost = cost
                 best_order = "Exponential"
-        
+        '''
         df.loc[len(df)] = ["Continuous", best_order, best_cost, perc, (best_cost-optimal_cost)*1./optimal_cost]
 
-    with open("ACCRE/"+dataset+"_trainset.csv", 'a') as f:
+    print(df)
+    with open("ACCRE/"+dataset+"_eml.csv", 'a') as f:
         df.to_csv(f, header=True)
         

@@ -11,7 +11,6 @@ class RequestSequence():
         self._delta = float((self._b - self._a) / self._n)
 
         self.CDF_func = CDF_func
-
         self._E = {}
         self._request_sequence = []
 
@@ -161,7 +160,8 @@ class TODiscretSequence(RequestSequence):
             self._request_sequence.append(self.discret_values[E_val[1]])
             j = E_val[1] + 1
             E_val = self.compute_E_value(j)
-        self._request_sequence.append(self.upper_limit)
+        if self._request_sequence[-1] != self.upper_limit:
+            self._request_sequence.append(self.upper_limit)
         return self._request_sequence
 
     def compute_E_value(self, i):

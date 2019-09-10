@@ -11,13 +11,13 @@ import OptimalSequence
 
 sample_count = list(range(10, 101, 10)) + list(range(110, 511, 50))
 bins = 100
-current_distribution = st.truncnorm
+current_distribution = st.expon
 lower_limit = 0
-upper_limit = 20
-mu = 8
-sigma = 2
-upper_bound = (upper_limit - mu) / sigma
-lower_bound = (lower_limit - mu) / sigma
+upper_limit = 9
+mu = 1
+sigma = 1.5
+upper_bound = 9
+lower_bound = 0
 
 def compute_cost_discret(data):
     # sort data and merge entries with the same value
@@ -38,12 +38,9 @@ def compute_cost_discret(data):
     sequence = handler.compute_request_sequence()
     if verbose:
         print(sequence)
-    arg = [lower_bound, upper_bound]
-    #print("optimal cdf",[1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg)
-    #        for i in range(len(sequence))])
     
     # Compute the expected makespan (MS)
-    MS = sum([sequence[i+1]*(1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg))
+    MS = sum([sequence[i+1]*(1-(current_distribution.cdf(sequence[i], loc=mu, scale=sigma)/current_distribution.cdf(upper_limit, loc=mu, scale=sigma)))
               for i in range(len(sequence)-1)])
     MS += sequence[0]
     return MS
@@ -55,10 +52,9 @@ def compute_cost(cdf, limits = [lower_limit, upper_limit]):
         sequence[-1] = upper_limit
     if verbose:
         print(sequence)
-    arg = [lower_bound, upper_bound]
     
     # Compute the expected makespan (MS)
-    MS = sum([sequence[i+1]*(1-current_distribution.cdf(sequence[i], loc=mu, scale=sigma, *arg))
+    MS = sum([sequence[i+1]*(1-(current_distribution.cdf(sequence[i], loc=mu, scale=sigma)/current_distribution.cdf(upper_limit, loc=mu, scale=sigma)))
               for i in range(len(sequence)-1)])
     MS += sequence[0]
     # MS = sum([sequence[i+1]*cdf(sequence[i]) for i in range(len(sequence)-1)])
@@ -127,9 +123,8 @@ def best_fit_distribution(data, x, y, bins, distr=[]):
     return (best_distribution, best_params, best_sse)
 
 def generate_workload(distribution, samples_count):
-    all_data = distribution.rvs(lower_bound, upper_bound,
-                             loc=mu, scale=sigma, size=samples_count)
-    return all_data#pd.Series(all_data)
+    all_data = distribution.rvs(loc=mu, scale=sigma, size=samples_count)
+    return [i for i in all_data if i>lower_bound and i<upper_bound]
 
 if __name__ == '__main__':
     verbose = False
@@ -140,7 +135,7 @@ if __name__ == '__main__':
 
     for count in sample_count:
         data = generate_workload(current_distribution, count)
-        print("Number samples: %d" %(count))
+        print("Number samples: %d %d" %(count, len(data)))
         y, x = np.histogram(data, bins=bins, density=True)
         x = (x + np.roll(x, -1))[:-1] / 2.0
 
@@ -148,8 +143,7 @@ if __name__ == '__main__':
             print("-----------")
             print("Optimal FIT")
         distribution = current_distribution
-        arg = [lower_bound, upper_bound]
-        cdf = lambda val: distribution.cdf(val, loc=mu, scale=sigma, *arg)
+        cdf = lambda val: distribution.cdf(val, loc=mu, scale=sigma)
         optimal_cost = compute_cost(cdf)
         df.loc[len(df)] = ["Optimal", distribution.name, optimal_cost, count, 0]
 
@@ -208,7 +202,7 @@ if __name__ == '__main__':
         if verbose:
             print("-----------")
             print("Semi-clairvoyant FIT")
-        distribution, params, err = best_fit_distribution(data, x, y, bins, distr=[st.norm])
+        distribution, params, err = best_fit_distribution(data, x, y, bins, distr=[current_distribution])
         if err!=np.inf:
             arg = params[:-2]
             cdf = lambda val: distribution.cdf(val, loc=params[-2], scale=params[-1], *arg)
@@ -221,13 +215,11 @@ if __name__ == '__main__':
         #distribution = current_distribution
         mu_guess = np.mean(data)
         sigma_guess = np.std(data)
-        arg = [(min(data) - mu_guess) / sigma_guess, (max(data) - mu_guess) / sigma_guess]
         #print(mu_guess, sigma_guess, arg)
-        cdf = lambda val: current_distribution.cdf(val, loc=mu_guess, scale=sigma_guess, *arg)
+        cdf = lambda val: current_distribution.cdf(val, loc=mu_guess, scale=sigma_guess)
         cost = compute_cost(cdf)
         df.loc[len(df)] = ["Clairvoyant", current_distribution.name, cost, count, (cost-optimal_cost)*1./optimal_cost]
-
-    #print(df.head())
-    with open("./"+current_distribution.name+"_synthetic.csv", 'a') as f:
+        
+    with open("./"+current_distribution.name+"_expon.csv", 'a') as f:
         df.to_csv(f, header=True)
         
