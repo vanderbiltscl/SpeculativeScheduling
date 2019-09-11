@@ -11,16 +11,23 @@ class WorkloadFit():
     def __init__(self, data, cost_model, interpolation_model,
                  bins=100, verbose=False):
         self.verbose = verbose
-        self.update_workload(data)
-        self.cost_model = cost_model
-        self.fit_model = interpolation_model
+        self.set_workload(data, bins=bins)
+        self.set_cost_model(cost_model)
+        self.set_interpolation_model(interpolation_model)
 
-    def update_workload(self, data, bins=100):
+    def set_workload(self, data, bins=100):
         self.data = data
         self.y, self.x = np.histogram(data, bins=bins, density=True)
         self.x = (self.x + np.roll(self.x, -1))[:-1] / 2.0
-        self.lower_limit = min(data)
-        self.upper_limit = max(data)
+        
+    def set_cost_model(self, cost_model):
+        self.cost_model = cost_model
+        limits = self.cost_model.get_limits()
+        self.lower_limit = limits[0]
+        self.upper_limit = limits[1]
+
+    def set_interpolation_model(self, interpolation_model):
+        self.fit_model = interpolation_model
 
     def __compute_discrete_cdf(self):
         # sort data and merge entries with the same value
@@ -38,7 +45,6 @@ class WorkloadFit():
         self.cdf = [i*1./len(self.cdf) for i in self.cdf]
         return discret_data
 
-    # TODO self.upperlimit aici e max(testing) nu max(training) pentru LogDataCost
     def compute_discrete_sequence(self):
         discret_data = self.__compute_discrete_cdf()
         handler = OptimalSequence.TODiscretSequence(
@@ -48,15 +54,14 @@ class WorkloadFit():
             print(sequence)
         return sequence
 
-    # TODO limits in cazul asta e lower si upper limit al distributiei pentru Syntetic
     def compute_interpolation_sequence(self, cdf, limits=-1):
         if limits == -1:
             limits = [self.lower_limit, self.upper_limit]
         handler = OptimalSequence.TOptimalSequence(
             limits[0], limits[1], cdf, discret_samples=500)
         sequence = handler.compute_request_sequence()
-        if sequence[-1]!=upper_limit:
-            sequence[-1] = upper_limit
+        if sequence[-1] != self.upper_limit:
+            sequence[-1] = self.upper_limit
         if self.verbose:
             print(sequence)
         return sequence
@@ -72,8 +77,8 @@ class WorkloadFit():
             print("Data cannot be fitted with the given interpolation model")
             return -1
 
-        print(params)
-        cdf = lambda val: get_cdf(self.x[0], self.x[-1], val, params[1])
+        cdf = lambda val: self.fit_model.get_cdf(
+            self.lower_limit, self.upper_limit, val, params)
         sequence = self.compute_interpolation_sequence(cdf)
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
@@ -95,14 +100,16 @@ class DistInterpolation(InterpolationModel):
     def __init__(self, list_of_distr=[]):
         self.distr = list_of_distr
 
-    def get_cdf(self, start, end, x, params):
+    def get_cdf(self, start, end, x, all_params):
         if x >= end:
             return 1
         if x <= start:
             return 0
-        scale = distribution.cdf(end, loc=params[-2], scale=params[-1], *arg)
+        distribution = all_params[0]
+        params = all_params[1]
         arg = params[:-2]
-        return distribution.cdf(val, loc=params[-2], 
+        scale = distribution.cdf(end, loc=params[-2], scale=params[-1], *arg)
+        return distribution.cdf(x, loc=params[-2], 
                                 scale=params[-1], *arg)/scale
 
 
@@ -122,12 +129,6 @@ class DistInterpolation(InterpolationModel):
         best_distribution = -1
         best_params = (0.0, 1.0)
         best_sse = np.inf
-
-        if self.verbose:
-            progressbar_width = len(dist_list)
-            sys.stdout.write("[%s]" % ("." * progressbar_width))
-            sys.stdout.flush()
-            sys.stdout.write("\b" * (progressbar_width + 1))
 
         # estimate distribution parameters from data
         for distribution in dist_list:
@@ -157,12 +158,6 @@ class DistInterpolation(InterpolationModel):
             except Exception:
                 pass
 
-            if self.verbose:
-                sys.stdout.write("=")
-                sys.stdout.flush()
-
-        if self.verbose:
-            sys.stdout.write("]\n")
         return (best_distribution, best_params, best_sse)
 
 
@@ -171,11 +166,12 @@ class PolyInterpolation(InterpolationModel):
     def __init__(self, max_order=10):
         self.max_order = max_order
 
-    def get_cdf(self, start, end, x, params):
+    def get_cdf(self, start, end, x, all_params):
         if x >= end:
             return 1
         if x <= start:
             return 0
+        params = all_params[1]
         return integrate.quad(np.poly1d(params), start, x, epsrel=1.49e-05)[0]
 
     def get_best_fit(self, data, x, y):
@@ -228,6 +224,9 @@ class LogDataCost(SequenceCost):
             cost += sequence[idx]
         cost = cost / len(self.testing)
         return cost
+    
+    def get_limits(self):
+        return [min(self.testing), max(self.testing)]
 
 
 # TODO - need ro make sure cdf is not <0 or > 1
@@ -249,3 +248,8 @@ class SyntheticDataCost(SequenceCost):
                     for i in range(len(sequence)-1)])
         cost += sequence[0]
         return cost
+    
+    def get_limits(self):
+        if len(self.arg)<2:
+            return [0, self.arg[0]]
+        return [self.arg[0], self.arg[1]]
