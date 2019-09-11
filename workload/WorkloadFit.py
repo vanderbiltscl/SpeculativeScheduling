@@ -229,27 +229,24 @@ class LogDataCost(SequenceCost):
         return [min(self.testing), max(self.testing)]
 
 
-# TODO - need ro make sure cdf is not <0 or > 1
 class SyntheticDataCost(SequenceCost):
 
-    def __init__(self, data, distribution, params):
-        self.distribution = distribution
-        self.arg = params[:-2]
-        self.loc = params[-2]
-        self.mu = params[-1]
+    def __init__(self, cdf_function, limits):
+        self.cdf = cdf_function
+        self.limits = limits
 
     def compute_sequence_cost(sequence):
-        arg = [self.lower_bound, self.upper_bound]
-        # Compute the cost based on the original distribution
-        cost = sum([sequence[i+1]*(1-self.distribution.cdf(sequence[i],
-                                                           loc=self.mu,
-                                                           scale=self.sigma,
-                                                           *self.arg))
-                    for i in range(len(sequence)-1)])
+        # for all sequences < lower_limit consider the cdf = 0
+        cost = sum([sequence[i] for i in range(len(sequence)-1)
+                    if sequence[i] <= limits[0]])
+        # the cost is computed based on the original distribution
+        # normalized so that cdf(upper_limit) is 1
+        scale = self.cdf(limits[1])
+        cost = sum([sequence[i+1]*(1-self.cdf(sequence[i])/scale)
+                    for i in range(len(sequence)-1)
+                    if sequence[i] > limits[0]])
         cost += sequence[0]
         return cost
     
     def get_limits(self):
-        if len(self.arg)<2:
-            return [0, self.arg[0]]
-        return [self.arg[0], self.arg[1]]
+        return limits
