@@ -73,6 +73,10 @@ class TOptimalSequence(RequestSequence):
                 min_request = j
         return (min_makespan, min_request)
 
+    def __compute_E_table_iter(self, i):
+        # Implements the __compute_E_table(self, i) function in 
+        # an iterative way
+
     def compute_request_sequence(self):
         if len(self._request_sequence) > 0:
             return self._request_sequence
