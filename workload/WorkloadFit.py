@@ -32,6 +32,11 @@ class WorkloadFit():
         self.fit_model = interpolation_model
         self.best_fit = None
 
+    # best_fit has the format returned by the best_fit functions in the
+    # interpolation model: [distr, params] or [order, params]
+    def set_best_fit(self, best_fit):
+        self.best_fit = best_fit
+
     def __compute_discrete_cdf(self):
         # sort data and merge entries with the same value
         discret_data = sorted(self.data)
@@ -75,7 +80,7 @@ class WorkloadFit():
         return cost
 
     def compute_interpolation_cost(self):
-        assert (self.fit_model is not None),\
+        assert (self.fit_model is not None or self.best_fit is not None),\
             "No interpolation model provided"
 
         if self.best_fit is None:
