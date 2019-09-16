@@ -52,6 +52,57 @@ class DistributionRuns():
         return wf.compute_interpolation_cost()
 
 
+class MultiDistRuns():
+    def set_cdf(self):
+        self.cdf_function = lambda val: np.sum(
+            [self.distribution.cdf(val, loc=self.mu[i],
+                                   scale=self.sigma[i],
+                                   *self.args[i])
+             for i in range(len(self.mu))]) / len(self.mu)
+
+    def get_training_set(self, samples_count):
+        self.all_data = list([])
+        for i in range(len(self.mu)):
+            self.all_data += list(distribution.rvs(
+                loc=self.mu[i], scale=self.sigma[i],
+                size=samples_count, *self.args[i])) 
+        return self.all_data
+
+    def get_cost_model(self):
+        last = len(self.mu) - 1
+        return WorkloadFit.SyntheticDataCost(self.cdf_function,
+                                             [self.lower_limit[0],
+                                              self.upper_limit[last]])
+
+    def get_optimal_cost(self, wf):
+        assert (self.all_data is not None),\
+            "Data needs to be set for optimal cost"
+        assert (self.cdf_function is not None),\
+            "CDF function needs to be set for optimal cost"
+
+        wf.set_workload(self.all_data)
+        return wf.compute_cdf_cost(self.cdf_function)
+
+
+class DoubleNormRun(MultiDistRuns):
+    def load_workload(self):
+        self.distribution = st.truncnorm
+        self.lower_limit = [0.5, 6]
+        self.upper_limit = [4, 20]
+        self.mu = [4, 10]
+        self.sigma = [2, 8]
+        i = len(self.mu) - 1
+        self.upper_bound = [
+            (self.upper_limit[i] - self.mu[i]) / self.sigma[i]
+            for i in range(len(self.mu))]
+        self.lower_bound = [
+            (self.lower_limit[i] - self.mu[i]) / self.sigma[i]
+            for i in range(len(self.mu))]
+        self.args = [(self.lower_bound[i], self.upper_bound[i])
+                     for i in range(len(self.mu))]
+        self.set_cdf()
+
+
 class ExponentialRun(DistributionRuns):
     def load_workload(self):
         self.distribution = st.expon

@@ -97,6 +97,11 @@ class WorkloadFit():
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
     
+    def compute_cdf_cost(self, cdf):
+        sequence = self.compute_interpolation_sequence(cdf)
+        cost = self.cost_model.compute_sequence_cost(sequence)
+        return cost
+
     def get_best_fit(self):
         if self.best_fit is None:
             self.best_fit = self.fit_model.get_best_fit(
