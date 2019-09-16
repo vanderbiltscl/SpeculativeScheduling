@@ -11,7 +11,8 @@ class WorkloadFit():
     def __init__(self, data, cost_model, interpolation_model=None,
                  bins=100, verbose=False):
         self.verbose = verbose
-        self.set_workload(data, bins=bins)
+        if len(data) > 0:
+            self.set_workload(data, bins=bins)
         self.set_cost_model(cost_model)
         if interpolation_model is None:
             self.set_interpolation_model(interpolation_model)
