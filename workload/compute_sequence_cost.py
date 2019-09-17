@@ -30,29 +30,6 @@ class LogDataRun():
 
 
 class DistributionRuns():
-    def get_training_set(self, samples_count):
-        self.all_data = self.distribution.rvs(
-            loc=self.mu, scale=self.sigma,
-            size=samples_count, *self.args)
-        return self.all_data
-
-    def get_cost_model(self):
-        cdf_function = lambda val: self.distribution.cdf(
-            val, loc=self.mu, scale=self.sigma, *self.args)
-        return WorkloadFit.SyntheticDataCost(cdf_function, [self.lower_limit,
-                                                            self.upper_limit])
-
-    def get_optimal_cost(self, wf):
-        assert (self.all_data is not None),\
-            "Data needs to be set for optimal cost"
-        wf.set_workload(self.all_data)
-        wf.set_interpolation_model(WorkloadFit.DistInterpolation())
-        wf.set_best_fit([self.distribution,
-                         tuple(self.args+[self.mu, self.sigma])])
-        return wf.compute_interpolation_cost()
-
-
-class MultiDistRuns():
     def set_cdf(self):
         self.cdf_function = lambda val: np.sum(
             [self.distribution.cdf(val, loc=self.mu[i],
@@ -63,7 +40,7 @@ class MultiDistRuns():
     def get_training_set(self, samples_count):
         self.all_data = list([])
         for i in range(len(self.mu)):
-            self.all_data += list(distribution.rvs(
+            self.all_data += list(self.distribution.rvs(
                 loc=self.mu[i], scale=self.sigma[i],
                 size=samples_count, *self.args[i])) 
         return self.all_data
@@ -84,7 +61,7 @@ class MultiDistRuns():
         return wf.compute_cdf_cost(self.cdf_function)
 
 
-class DoubleNormRun(MultiDistRuns):
+class DoubleNormRun(DistributionRuns):
     def load_workload(self):
         self.distribution = st.truncnorm
         self.lower_limit = [0.5, 6]
@@ -101,31 +78,39 @@ class DoubleNormRun(MultiDistRuns):
         self.args = [(self.lower_bound[i], self.upper_bound[i])
                      for i in range(len(self.mu))]
         self.set_cdf()
+        return []
 
 
 class ExponentialRun(DistributionRuns):
     def load_workload(self):
         self.distribution = st.expon
-        self.lower_limit = 0
-        self.upper_limit = 9
-        self.mu = 1
-        self.sigma = 1.5
-        self.upper_bound = 9
-        self.lower_bound = 0
-        self.args = []
+        self.lower_limit = [0]
+        self.upper_limit = [9]
+        self.mu = [1]
+        self.sigma = [1.5]
+        self.upper_bound = [9]
+        self.lower_bound = [0]
+        self.args = [[]]
+        self.set_cdf()
         return []
 
 
 class TruncNormRun(DistributionRuns):
     def load_workload(self):
         self.distribution = st.truncnorm
-        self.lower_limit = 0
-        self.upper_limit = 20
-        self.mu = 8
-        self.sigma = 2
-        self.upper_bound = (self.upper_limit - self.mu) / self.sigma
-        self.lower_bound = (self.lower_limit - self.mu) / self.sigma
-        self.args = [self.lower_bound, self.upper_bound]
+        self.lower_limit = [0]
+        self.upper_limit = [20]
+        self.mu = [8]
+        self.sigma = [2]
+        self.upper_bound = [
+            (self.upper_limit[i] - self.mu[i]) / self.sigma[i]
+            for i in range(len(self.mu))]
+        self.lower_bound = [
+            (self.lower_limit[i] - self.mu[i]) / self.sigma[i]
+            for i in range(len(self.mu))]
+        self.args = [(self.lower_bound[i], self.upper_bound[i])
+                     for i in range(len(self.mu))]
+        self.set_cdf()
         return []
 
 
@@ -135,7 +120,7 @@ if __name__ == '__main__':
     verbose = False
     if len(sys.argv) < 2:
         print("Usage: %s {dataset_file or distribution} [verbose]" %(sys.argv[0]))
-        print("Accepted distributions: [truncnorm, expon]")
+        print("Accepted distributions: [truncnorm, expon, doublenorm]")
         print("Example dataset: %s ACCRE/Multi_Atlas.out" %(sys.argv[0]))
         exit()
 
@@ -151,6 +136,11 @@ if __name__ == '__main__':
         dataset = "expon"
         scenario = ExponentialRun()
         all_data = scenario.load_workload()
+    elif sys.argv[1]=="doublenorm":
+        dataset = "doublenorm"
+        scenario = DoubleNormRun()
+        all_data = scenario.load_workload()
+
     else:
         dataset = sys.argv[1].split("/")[1]
         dataset = dataset[:-4]
