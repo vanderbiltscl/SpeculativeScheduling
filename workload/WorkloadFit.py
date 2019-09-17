@@ -8,13 +8,17 @@ import sys
 import OptimalSequence
 
 class WorkloadFit():
-    def __init__(self, data, cost_model, interpolation_model=None,
+    def __init__(self, data, cost_model=None, interpolation_model=None,
                  bins=100, verbose=False):
         self.verbose = verbose
         if len(data) > 0:
             self.set_workload(data, bins=bins)
-        self.set_cost_model(cost_model)
-        if interpolation_model is None:
+            # values will be overwritten by the cost model if provided
+            self.lower_limit = min(data)
+            self.upper_limit = max(data)
+        if cost_model is not None:
+            self.set_cost_model(cost_model)
+        if interpolation_model is not None:
             self.set_interpolation_model(interpolation_model)
 
     def set_workload(self, data, bins=100):
@@ -30,7 +34,17 @@ class WorkloadFit():
         self.upper_limit = limits[1]
 
     def set_interpolation_model(self, interpolation_model):
-        self.fit_model = interpolation_model
+        if not isinstance(interpolation_model, list):
+            self.fit_model = [interpolation_model]
+        else:
+            self.fit_model = interpolation_model
+        self.best_fit = None
+
+    def add_interpolation_model(self, interpolation_model):
+        if not isinstance(interpolation_model, list):
+            self.fit_model.append(interpolation_model)
+        else:
+            self.fit_model += interpolation_model
         self.best_fit = None
 
     # best_fit has the format returned by the best_fit functions in the
