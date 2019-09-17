@@ -8,17 +8,20 @@ import sys
 import OptimalSequence
 
 class WorkloadFit():
-    def __init__(self, data, cost_model, interpolation_model,
+    def __init__(self, data, cost_model, interpolation_model=None,
                  bins=100, verbose=False):
         self.verbose = verbose
-        self.set_workload(data, bins=bins)
+        if len(data) > 0:
+            self.set_workload(data, bins=bins)
         self.set_cost_model(cost_model)
-        self.set_interpolation_model(interpolation_model)
+        if interpolation_model is None:
+            self.set_interpolation_model(interpolation_model)
 
     def set_workload(self, data, bins=100):
         self.data = data
         self.y, self.x = np.histogram(data, bins=bins, density=True)
         self.x = (self.x + np.roll(self.x, -1))[:-1] / 2.0
+        self.best_fit = None
         
     def set_cost_model(self, cost_model):
         self.cost_model = cost_model
@@ -28,6 +31,12 @@ class WorkloadFit():
 
     def set_interpolation_model(self, interpolation_model):
         self.fit_model = interpolation_model
+        self.best_fit = None
+
+    # best_fit has the format returned by the best_fit functions in the
+    # interpolation model: [distr, params] or [order, params]
+    def set_best_fit(self, best_fit):
+        self.best_fit = best_fit
 
     def __compute_discrete_cdf(self):
         # sort data and merge entries with the same value
@@ -72,16 +81,32 @@ class WorkloadFit():
         return cost
 
     def compute_interpolation_cost(self):
-        params = self.fit_model.get_best_fit(self.data, self.x, self.y)
-        if params[0] == -1:
+        assert (self.fit_model is not None or self.best_fit is not None),\
+            "No interpolation model provided"
+
+        if self.best_fit is None:
+            self.best_fit = self.fit_model.get_best_fit(
+                self.data, self.x, self.y)
+        if self.best_fit[0] == -1:
             print("Data cannot be fitted with the given interpolation model")
             return -1
 
         cdf = lambda val: self.fit_model.get_cdf(
-            self.lower_limit, self.upper_limit, val, params)
+            self.lower_limit, self.upper_limit, val, self.best_fit)
         sequence = self.compute_interpolation_sequence(cdf)
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
+    
+    def compute_cdf_cost(self, cdf):
+        sequence = self.compute_interpolation_sequence(cdf)
+        cost = self.cost_model.compute_sequence_cost(sequence)
+        return cost
+
+    def get_best_fit(self):
+        if self.best_fit is None:
+            self.best_fit = self.fit_model.get_best_fit(
+                self.data, self.x, self.y)
+        return self.best_fit
 
 #-------------
 # Classes for defining how the interpolation will be done
@@ -235,18 +260,18 @@ class SyntheticDataCost(SequenceCost):
         self.cdf = cdf_function
         self.limits = limits
 
-    def compute_sequence_cost(sequence):
+    def compute_sequence_cost(self, sequence):
         # for all sequences < lower_limit consider the cdf = 0
         cost = sum([sequence[i] for i in range(len(sequence)-1)
-                    if sequence[i] <= limits[0]])
+                    if sequence[i] <= self.limits[0]])
         # the cost is computed based on the original distribution
         # normalized so that cdf(upper_limit) is 1
-        scale = self.cdf(limits[1])
+        scale = self.cdf(self.limits[1])
         cost = sum([sequence[i+1]*(1-self.cdf(sequence[i])/scale)
                     for i in range(len(sequence)-1)
-                    if sequence[i] > limits[0]])
+                    if sequence[i] > self.limits[0]])
         cost += sequence[0]
         return cost
     
     def get_limits(self):
-        return limits
+        return self.limits
