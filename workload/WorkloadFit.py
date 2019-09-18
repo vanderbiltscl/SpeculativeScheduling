@@ -94,18 +94,29 @@ class WorkloadFit():
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
 
+    def compute_best_fit(self):
+        best_fit = (-1, -1, np.inf)
+        best_i = -1
+        for i in range(len(self.fit_model)):
+            fit = self.fit_model[i].get_best_fit(
+                self.data, self.x, self.y)
+            if fit[2] < best_fit[2]:
+                best_fit = fit
+                best_i = i
+        self.best_fit = best_fit
+        return i
+
     def compute_interpolation_cost(self):
         assert (self.fit_model is not None or self.best_fit is not None),\
             "No interpolation model provided"
 
         if self.best_fit is None:
-            self.best_fit = self.fit_model.get_best_fit(
-                self.data, self.x, self.y)
+            best_idx = self.compute_best_fit() 
         if self.best_fit[0] == -1:
             print("Data cannot be fitted with the given interpolation model")
             return -1
 
-        cdf = lambda val: self.fit_model.get_cdf(
+        cdf = lambda val: self.fit_model[best_idx].get_cdf(
             self.lower_limit, self.upper_limit, val, self.best_fit)
         sequence = self.compute_interpolation_sequence(cdf)
         cost = self.cost_model.compute_sequence_cost(sequence)
@@ -118,8 +129,7 @@ class WorkloadFit():
 
     def get_best_fit(self):
         if self.best_fit is None:
-            self.best_fit = self.fit_model.get_best_fit(
-                self.data, self.x, self.y)
+            self.compute_best_fit()
         return self.best_fit
 
 #-------------
@@ -231,7 +241,7 @@ class PolyInterpolation(InterpolationModel):
                     best_z = z
                     best_err = err
         
-        return (best_order, best_z)
+        return (best_order, best_z, best_err)
 
 
 #-------------
