@@ -1,3 +1,10 @@
+## Most functions are implemented in the WorkloadFit class
+
+For all the functionalities see the examples in:
+- `compute_sequence_cost.py`
+- `example_compute_cost.ipynb`
+- `example_get_sequence.ipynb`
+
 ## Find best fit functions
 
 Computes the cost of using discreet or continuous fits for a given dataset. 
