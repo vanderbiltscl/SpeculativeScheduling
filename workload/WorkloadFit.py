@@ -77,7 +77,7 @@ class WorkloadFit():
             print(sequence)
         return sequence
 
-    def compute_interpolation_sequence(self, cdf, limits=-1):
+    def __interpolation_sequence(self, cdf, limits=-1):
         if limits == -1:
             limits = [self.lower_limit, self.upper_limit]
         handler = OptimalSequence.TOptimalSequence(
@@ -104,9 +104,9 @@ class WorkloadFit():
                 best_fit = fit
                 best_i = i
         self.best_fit = best_fit
-        return i
+        return best_i
 
-    def compute_interpolation_cost(self):
+    def compute_interpolation_sequence(self):
         assert (self.fit_model is not None or self.best_fit is not None),\
             "No interpolation model provided"
 
@@ -118,7 +118,11 @@ class WorkloadFit():
 
         cdf = lambda val: self.fit_model[best_idx].get_cdf(
             self.lower_limit, self.upper_limit, val, self.best_fit)
-        sequence = self.compute_interpolation_sequence(cdf)
+        sequence = self.__interpolation_sequence(cdf)
+        return sequence
+
+    def compute_interpolation_cost(self):
+        sequence = self.compute_interpolation_sequence()
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
     
