@@ -16,7 +16,7 @@ More details about implementation details as well as examples can be found on th
 
 If you use the resources available here in your work, please cite our paper:
 
-*Speculative Scheduling Techniques for Stochastic HPC Applications*. Ana Gainaru, Guillaume Pallez (Aupy), Hongyang Sun, Padma Raghavan [ICPP 2019] 
+*Speculative Scheduling Techniques for Stochastic HPC Applications*. Ana Gainaru, Guillaume Pallez (Aupy), Hongyang Sun, Padma Raghavan [ICPP 2019] ((Link to the technical report)[https://hal.inria.fr/hal-02158598/document])
 
 ## Usage
 
