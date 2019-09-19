@@ -18,6 +18,27 @@ If you use the resources available here in your work, please cite our paper:
 
 *Speculative Scheduling Techniques for Stochastic HPC Applications*. Ana Gainaru, Guillaume Pallez (Aupy), Hongyang Sun, Padma Raghavan [ICPP 2019] ((Link to the technical report)[https://hal.inria.fr/hal-02158598/document])
 
+```
+@inproceedings{Gainaru:2019:SSS:3337821.3337890,
+ author = {Gainaru, Ana and Aupy, Guillaume Pallez and Sun, Hongyang and Raghavan, Padma},
+ title = {Speculative Scheduling for Stochastic HPC Applications},
+ booktitle = {Proceedings of the 48th International Conference on Parallel Processing},
+ series = {ICPP 2019},
+ year = {2019},
+ isbn = {978-1-4503-6295-5},
+ location = {Kyoto, Japan},
+ pages = {32:1--32:10},
+ articleno = {32},
+ numpages = {10},
+ url = {http://doi.acm.org/10.1145/3337821.3337890},
+ doi = {10.1145/3337821.3337890},
+ acmid = {3337890},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ keywords = {HPC runtime, Scheduling algorithm, stochastic applications},
+} 
+```
+
 ## Usage
 
 There are currently 2 scripts that can be used to trigger different scheduling scenarios:
