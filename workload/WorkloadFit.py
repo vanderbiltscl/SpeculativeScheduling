@@ -8,13 +8,17 @@ import sys
 import OptimalSequence
 
 class WorkloadFit():
-    def __init__(self, data, cost_model, interpolation_model=None,
+    def __init__(self, data, cost_model=None, interpolation_model=None,
                  bins=100, verbose=False):
         self.verbose = verbose
         if len(data) > 0:
             self.set_workload(data, bins=bins)
-        self.set_cost_model(cost_model)
-        if interpolation_model is None:
+            # values will be overwritten by the cost model if provided
+            self.lower_limit = min(data)
+            self.upper_limit = max(data)
+        if cost_model is not None:
+            self.set_cost_model(cost_model)
+        if interpolation_model is not None:
             self.set_interpolation_model(interpolation_model)
 
     def set_workload(self, data, bins=100):
@@ -30,7 +34,17 @@ class WorkloadFit():
         self.upper_limit = limits[1]
 
     def set_interpolation_model(self, interpolation_model):
-        self.fit_model = interpolation_model
+        if not isinstance(interpolation_model, list):
+            self.fit_model = [interpolation_model]
+        else:
+            self.fit_model = interpolation_model
+        self.best_fit = None
+
+    def add_interpolation_model(self, interpolation_model):
+        if not isinstance(interpolation_model, list):
+            self.fit_model.append(interpolation_model)
+        else:
+            self.fit_model += interpolation_model
         self.best_fit = None
 
     # best_fit has the format returned by the best_fit functions in the
@@ -63,7 +77,7 @@ class WorkloadFit():
             print(sequence)
         return sequence
 
-    def compute_interpolation_sequence(self, cdf, limits=-1):
+    def __interpolation_sequence(self, cdf, limits=-1):
         if limits == -1:
             limits = [self.lower_limit, self.upper_limit]
         handler = OptimalSequence.TOptimalSequence(
@@ -80,20 +94,35 @@ class WorkloadFit():
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
 
-    def compute_interpolation_cost(self):
+    def compute_best_fit(self):
+        best_fit = (-1, -1, np.inf)
+        best_i = -1
+        for i in range(len(self.fit_model)):
+            fit = self.fit_model[i].get_best_fit(
+                self.data, self.x, self.y)
+            if fit[2] < best_fit[2]:
+                best_fit = fit
+                best_i = i
+        self.best_fit = best_fit
+        return best_i
+
+    def compute_interpolation_sequence(self):
         assert (self.fit_model is not None or self.best_fit is not None),\
             "No interpolation model provided"
 
         if self.best_fit is None:
-            self.best_fit = self.fit_model.get_best_fit(
-                self.data, self.x, self.y)
+            best_idx = self.compute_best_fit() 
         if self.best_fit[0] == -1:
             print("Data cannot be fitted with the given interpolation model")
             return -1
 
-        cdf = lambda val: self.fit_model.get_cdf(
+        cdf = lambda val: self.fit_model[best_idx].get_cdf(
             self.lower_limit, self.upper_limit, val, self.best_fit)
-        sequence = self.compute_interpolation_sequence(cdf)
+        sequence = self.__interpolation_sequence(cdf)
+        return sequence
+
+    def compute_interpolation_cost(self):
+        sequence = self.compute_interpolation_sequence()
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
     
@@ -104,8 +133,7 @@ class WorkloadFit():
 
     def get_best_fit(self):
         if self.best_fit is None:
-            self.best_fit = self.fit_model.get_best_fit(
-                self.data, self.x, self.y)
+            self.compute_best_fit()
         return self.best_fit
 
 #-------------
@@ -217,7 +245,7 @@ class PolyInterpolation(InterpolationModel):
                     best_z = z
                     best_err = err
         
-        return (best_order, best_z)
+        return (best_order, best_z, best_err)
 
 
 #-------------
