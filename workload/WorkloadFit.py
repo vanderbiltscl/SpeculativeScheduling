@@ -20,6 +20,7 @@ class WorkloadFit():
             self.set_cost_model(cost_model)
         if interpolation_model is not None:
             self.set_interpolation_model(interpolation_model)
+        self.sequence_model = OptimalSequence.TOptimalSequence
 
     def set_workload(self, data, bins=100):
         self.data = data
@@ -39,6 +40,9 @@ class WorkloadFit():
         else:
             self.fit_model = interpolation_model
         self.best_fit = None
+    
+    def change_default_sequence_model(self, sequence_model):
+        self.sequence_model = sequence_model
 
     def add_interpolation_model(self, interpolation_model):
         if not isinstance(interpolation_model, list):
@@ -80,11 +84,12 @@ class WorkloadFit():
     def __interpolation_sequence(self, cdf, limits=-1):
         if limits == -1:
             limits = [self.lower_limit, self.upper_limit]
-        handler = OptimalSequence.TOptimalSequence(
+        handler = self.sequence_model(
             limits[0], limits[1], cdf, discret_samples=500)
         sequence = handler.compute_request_sequence()
-        if sequence[-1] != self.upper_limit:
-            sequence[-1] = self.upper_limit
+        print("TODO, consistency (reservation, checkpoint) or just reservation",sequence)
+        #if sequence[-1] != self.upper_limit:
+        #    sequence[-1] = self.upper_limit
         if self.verbose:
             print(sequence)
         return sequence
