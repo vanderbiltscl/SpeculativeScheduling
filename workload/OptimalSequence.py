@@ -80,7 +80,7 @@ class TOptimalSequence(RequestSequence):
         j = 1
         while E_val[1] < self._n:
             E_val = self.compute_E_value(j)
-            self._request_sequence.append(self._a + E_val[1] * self._delta)
+            self._request_sequence.append((self._a + E_val[1] * self._delta, ))
             j = E_val[1] + 1
         return self._request_sequence
 
@@ -157,11 +157,13 @@ class TODiscretSequence(RequestSequence):
         j = 0
         E_val = self.compute_E_value(j)
         while E_val[1] < len(self.discret_values):
-            self._request_sequence.append(self.discret_values[E_val[1]])
+            self._request_sequence.append((self.discret_values[E_val[1]], ))
             j = E_val[1] + 1
             E_val = self.compute_E_value(j)
-        if self._request_sequence[-1] != self.upper_limit:
-            self._request_sequence.append(self.upper_limit)
+
+        if self._request_sequence[-1][0] != self.upper_limit:
+            self._request_sequence.append((self.upper_limit, ))
+        
         return self._request_sequence
 
     def compute_E_value(self, i):
