@@ -11,6 +11,8 @@ class WorkloadFit():
     def __init__(self, data, cost_model=None, interpolation_model=None,
                  bins=100, verbose=False):
         self.verbose = verbose
+        self.best_fit = None
+        self.fit_model = None 
         if len(data) > 0:
             self.set_workload(data, bins=bins)
             # values will be overwritten by the cost model if provided
@@ -87,9 +89,8 @@ class WorkloadFit():
         handler = self.sequence_model(
             limits[0], limits[1], cdf, discret_samples=500)
         sequence = handler.compute_request_sequence()
-        print("TODO, consistency (reservation, checkpoint) or just reservation",sequence)
-        #if sequence[-1] != self.upper_limit:
-        #    sequence[-1] = self.upper_limit
+        if sequence[-1][0] != self.upper_limit:
+            sequence[-1] = (self.upper_limit, )
         if self.verbose:
             print(sequence)
         return sequence
@@ -132,7 +133,7 @@ class WorkloadFit():
         return cost
     
     def compute_cdf_cost(self, cdf):
-        sequence = self.compute_interpolation_sequence(cdf)
+        sequence = self.__interpolation_sequence(cdf)
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
 
