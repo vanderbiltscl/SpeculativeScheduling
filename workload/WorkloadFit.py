@@ -276,11 +276,11 @@ class LogDataCost(SequenceCost):
             idx = 0
             if len(sequence) > 1:
                 idx_list = [i for i in range(1,len(sequence)) if
-                            sequence[i-1] < instance and
-                            sequence[i] >= instance]
+                            sequence[i-1][0] < instance and
+                            sequence[i][0] >= instance]
                 if len(idx_list) > 0:
                     idx = idx_list[0]
-            cost += sequence[idx]
+            cost += sequence[idx][0]
         cost = cost / len(self.testing)
         return cost
     
@@ -296,15 +296,15 @@ class SyntheticDataCost(SequenceCost):
 
     def compute_sequence_cost(self, sequence):
         # for all sequences < lower_limit consider the cdf = 0
-        cost = sum([sequence[i] for i in range(len(sequence)-1)
-                    if sequence[i] <= self.limits[0]])
+        cost = sum([sequence[i][0] for i in range(len(sequence)-1)
+                    if sequence[i][0] <= self.limits[0]])
         # the cost is computed based on the original distribution
         # normalized so that cdf(upper_limit) is 1
         scale = self.cdf(self.limits[1])
-        cost = sum([sequence[i+1]*(1-self.cdf(sequence[i])/scale)
+        cost = sum([sequence[i+1][0]*(1-self.cdf(sequence[i])/scale)
                     for i in range(len(sequence)-1)
-                    if sequence[i] > self.limits[0]])
-        cost += sequence[0]
+                    if sequence[i][0] > self.limits[0]])
+        cost += sequence[0][0]
         return cost
     
     def get_limits(self):
