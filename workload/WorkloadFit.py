@@ -11,6 +11,8 @@ class WorkloadFit():
     def __init__(self, data, cost_model=None, interpolation_model=None,
                  bins=100, verbose=False):
         self.verbose = verbose
+        self.best_fit = None
+        self.fit_model = None 
         if len(data) > 0:
             self.set_workload(data, bins=bins)
             # values will be overwritten by the cost model if provided
@@ -20,6 +22,7 @@ class WorkloadFit():
             self.set_cost_model(cost_model)
         if interpolation_model is not None:
             self.set_interpolation_model(interpolation_model)
+        self.sequence_model = OptimalSequence.TOptimalSequence
 
     def set_workload(self, data, bins=100):
         self.data = data
@@ -39,6 +42,9 @@ class WorkloadFit():
         else:
             self.fit_model = interpolation_model
         self.best_fit = None
+    
+    def change_default_sequence_model(self, sequence_model):
+        self.sequence_model = sequence_model
 
     def add_interpolation_model(self, interpolation_model):
         if not isinstance(interpolation_model, list):
@@ -80,11 +86,11 @@ class WorkloadFit():
     def __interpolation_sequence(self, cdf, limits=-1):
         if limits == -1:
             limits = [self.lower_limit, self.upper_limit]
-        handler = OptimalSequence.TOptimalSequence(
+        handler = self.sequence_model(
             limits[0], limits[1], cdf, discret_samples=500)
         sequence = handler.compute_request_sequence()
-        if sequence[-1] != self.upper_limit:
-            sequence[-1] = self.upper_limit
+        if sequence[-1][0] != self.upper_limit:
+            sequence[-1] = (self.upper_limit, )
         if self.verbose:
             print(sequence)
         return sequence
@@ -127,7 +133,7 @@ class WorkloadFit():
         return cost
     
     def compute_cdf_cost(self, cdf):
-        sequence = self.compute_interpolation_sequence(cdf)
+        sequence = self.__interpolation_sequence(cdf)
         cost = self.cost_model.compute_sequence_cost(sequence)
         return cost
 
@@ -270,11 +276,11 @@ class LogDataCost(SequenceCost):
             idx = 0
             if len(sequence) > 1:
                 idx_list = [i for i in range(1,len(sequence)) if
-                            sequence[i-1] < instance and
-                            sequence[i] >= instance]
+                            sequence[i-1][0] < instance and
+                            sequence[i][0] >= instance]
                 if len(idx_list) > 0:
                     idx = idx_list[0]
-            cost += sequence[idx]
+            cost += sequence[idx][0]
         cost = cost / len(self.testing)
         return cost
     
@@ -290,15 +296,15 @@ class SyntheticDataCost(SequenceCost):
 
     def compute_sequence_cost(self, sequence):
         # for all sequences < lower_limit consider the cdf = 0
-        cost = sum([sequence[i] for i in range(len(sequence)-1)
-                    if sequence[i] <= self.limits[0]])
+        cost = sum([sequence[i][0] for i in range(len(sequence)-1)
+                    if sequence[i][0] <= self.limits[0]])
         # the cost is computed based on the original distribution
         # normalized so that cdf(upper_limit) is 1
         scale = self.cdf(self.limits[1])
-        cost = sum([sequence[i+1]*(1-self.cdf(sequence[i])/scale)
+        cost = sum([sequence[i+1][0]*(1-self.cdf(sequence[i])/scale)
                     for i in range(len(sequence)-1)
-                    if sequence[i] > self.limits[0]])
-        cost += sequence[0]
+                    if sequence[i][0] > self.limits[0]])
+        cost += sequence[0][0]
         return cost
     
     def get_limits(self):
