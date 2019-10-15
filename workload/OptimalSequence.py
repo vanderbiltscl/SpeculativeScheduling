@@ -26,8 +26,8 @@ class RequestSequence():
         return fi / self.CDF_func(self._b)
 
     def compute_sum_F(self):
-        sumF = (self._n + 1) * [0]
-        for k in range(self._n - 1, 0, -1):
+        sumF = (self._n + 2) * [0]
+        for k in range(self._n, -1, -1):
             sumF[k] = self.compute_F(k) + sumF[k + 1]
         return sumF
 
@@ -59,7 +59,7 @@ class TOptimalSequence(RequestSequence):
 
         min_makespan = -1
         min_request = -1
-        for j in range(i, self._n + 1):
+        for j in range(i, self._n + 2):
             makespan = float(self.__sumF[i] * (self._a + self._delta * j))
             if j + 1 in self._E:
                 makespan += self._E[j + 1][0]
