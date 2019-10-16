@@ -246,7 +246,7 @@ class CheckpointSequence(RequestSequence):
 
     def __compute_E_table_checkpoint(self, ic, il):
         if il == self._n:
-            return (0, self._n, 1)
+            return (0, self._n, 0)
         R = self.R
         if ic == 0:
             R = 0
@@ -272,7 +272,8 @@ class CheckpointSequence(RequestSequence):
             start = 0
             if ic == 0:
                 start = self._a
-            self._request_sequence.append((start + (E_val[1] - ic) * self._delta, E_val[2]))
+            self._request_sequence.append(
+                (start + (E_val[1] - ic) * self._delta, E_val[2]))
             # if the reservation is checkpointed add the walltime
             if E_val[2] == 1:
                 total_walltime += (start + (E_val[1] - ic) * self._delta)
