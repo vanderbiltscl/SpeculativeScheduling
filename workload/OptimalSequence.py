@@ -60,7 +60,7 @@ class TOptimalSequence(RequestSequence):
 
         min_makespan = -1
         min_request = -1
-        for j in range(i, self._n + 2):
+        for j in range(i, self._n + 1):
             makespan = float(self.__sumF[i] * (self._a + self._delta * j))
             if j + 1 in self._E:
                 makespan += self._E[j + 1][0]
