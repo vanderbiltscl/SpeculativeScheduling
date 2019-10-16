@@ -37,6 +37,7 @@ class RequestSequence():
     def compute_request_sequence(self):
         return self._request_sequence
 
+
 class TOptimalSequence(RequestSequence):
     ''' Sequence that optimizes the total makespan of a job. Defined in the
     Aupy et al paper published in IPDPS 2019. '''
@@ -82,6 +83,10 @@ class TOptimalSequence(RequestSequence):
             E_val = self.compute_E_value(j)
             self._request_sequence.append((self._a + E_val[1] * self._delta, ))
             j = E_val[1] + 1
+
+        if self._request_sequence[-1][0] != self._b:
+            self._request_sequence.append((self._b, ))
+
         return self._request_sequence
 
     def compute_E_value(self, i):
@@ -181,11 +186,18 @@ class CheckpointSequence(RequestSequence):
 
     def __init__(self, lower_bound, upper_bound, CDF_func,
                  discret_samples=100, always_checkpoint=False,
-                 C = 0.15, R=0.15):
+                 C=-1, R=-1):
         super(CheckpointSequence, self).__init__(lower_bound, upper_bound,
                                                CDF_func, discret_samples)
+        
+        # if no C/R values are provided, the cost is equal to 10% of average
         self._C = C
         self.R = R
+        if C== -1:
+            self._C = (upper_bound - lower_bound) / 10
+        if R == -1:
+            self._R = (upper_bound - lower_bound) / 10
+
         self.always_checkpoint = always_checkpoint
         self._sumF = self.compute_sum_F()
         E_val = self.compute_E_value(0, 0)
@@ -234,7 +246,7 @@ class CheckpointSequence(RequestSequence):
 
     def __compute_E_table_checkpoint(self, ic, il):
         if il == self._n:
-            return (0, self._n, 1)
+            return (0, self._n, 0)
         R = self.R
         if ic == 0:
             R = 0
@@ -254,14 +266,24 @@ class CheckpointSequence(RequestSequence):
         E_val = (0, 0)
         ic = 0
         il = 0
+        total_walltime = 0
         while E_val[1] < self._n:
             E_val = self.compute_E_value(ic, il)
             start = 0
             if ic == 0:
                 start = self._a
-            self._request_sequence.append((start + (E_val[1] - ic) * self._delta, E_val[2]))
+            self._request_sequence.append(
+                (start + (E_val[1] - ic) * self._delta, E_val[2]))
+            # if the reservation is checkpointed add the walltime
+            if E_val[2] == 1:
+                total_walltime += (start + (E_val[1] - ic) * self._delta)
             ic = (1 - E_val[2]) * ic + E_val[1] * E_val[2]
             il = E_val[1]
+
+        time_left = self._b - (self._request_sequence[-1][0] + total_walltime)
+        if time_left != 0:
+            self._request_sequence.append((time_left, 0))
+
         return self._request_sequence
 
     def compute_E_value(self, ic, il):

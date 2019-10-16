@@ -23,6 +23,8 @@ class WorkloadFit():
         if interpolation_model is not None:
             self.set_interpolation_model(interpolation_model)
         self.sequence_model = OptimalSequence.TOptimalSequence
+        # default argument for computing the sequence: no split intervals
+        self.sequece_args = [500]
 
     def set_workload(self, data, bins=100):
         self.data = data
@@ -43,8 +45,9 @@ class WorkloadFit():
             self.fit_model = interpolation_model
         self.best_fit = None
     
-    def change_default_sequence_model(self, sequence_model):
+    def change_default_sequence_model(self, sequence_model, args=[]):
         self.sequence_model = sequence_model
+        self.sequece_args = [self.sequece_args[0]] + args
 
     def add_interpolation_model(self, interpolation_model):
         if not isinstance(interpolation_model, list):
@@ -87,10 +90,8 @@ class WorkloadFit():
         if limits == -1:
             limits = [self.lower_limit, self.upper_limit]
         handler = self.sequence_model(
-            limits[0], limits[1], cdf, discret_samples=500)
+            limits[0], limits[1], cdf, *self.sequece_args)
         sequence = handler.compute_request_sequence()
-        if sequence[-1][0] != self.upper_limit:
-            sequence[-1] = (self.upper_limit, )
         if self.verbose:
             print(sequence)
         return sequence
