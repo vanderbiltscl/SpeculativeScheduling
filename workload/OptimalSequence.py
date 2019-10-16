@@ -186,11 +186,18 @@ class CheckpointSequence(RequestSequence):
 
     def __init__(self, lower_bound, upper_bound, CDF_func,
                  discret_samples=100, always_checkpoint=False,
-                 C = 0.15, R=0.15):
+                 C=-1, R=-1):
         super(CheckpointSequence, self).__init__(lower_bound, upper_bound,
                                                CDF_func, discret_samples)
+        
+        # if no C/R values are provided, the cost is equal to 10% of average
         self._C = C
         self.R = R
+        if C== -1:
+            self._C = (upper_bound - lower_bound) / 10
+        if R == -1:
+            self._R = (upper_bound - lower_bound) / 10
+
         self.always_checkpoint = always_checkpoint
         self._sumF = self.compute_sum_F()
         E_val = self.compute_E_value(0, 0)
