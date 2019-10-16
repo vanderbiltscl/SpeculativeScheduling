@@ -37,6 +37,7 @@ class RequestSequence():
     def compute_request_sequence(self):
         return self._request_sequence
 
+
 class TOptimalSequence(RequestSequence):
     ''' Sequence that optimizes the total makespan of a job. Defined in the
     Aupy et al paper published in IPDPS 2019. '''
@@ -82,6 +83,10 @@ class TOptimalSequence(RequestSequence):
             E_val = self.compute_E_value(j)
             self._request_sequence.append((self._a + E_val[1] * self._delta, ))
             j = E_val[1] + 1
+
+        if self._request_sequence[-1][0] != self._b:
+            self._request_sequence.append((self._b, ))
+
         return self._request_sequence
 
     def compute_E_value(self, i):
@@ -254,14 +259,23 @@ class CheckpointSequence(RequestSequence):
         E_val = (0, 0)
         ic = 0
         il = 0
+        total_walltime = 0
         while E_val[1] < self._n:
             E_val = self.compute_E_value(ic, il)
             start = 0
             if ic == 0:
                 start = self._a
             self._request_sequence.append((start + (E_val[1] - ic) * self._delta, E_val[2]))
+            # if the reservation is checkpointed add the walltime
+            if E_val[2] == 1:
+                total_walltime += (start + (E_val[1] - ic) * self._delta)
             ic = (1 - E_val[2]) * ic + E_val[1] * E_val[2]
             il = E_val[1]
+
+        time_left = self._b - (self._request_sequence[-1][0] + total_walltime)
+        if time_left != 0:
+            self._request_sequence.append((time_left, 0))
+
         return self._request_sequence
 
     def compute_E_value(self, ic, il):

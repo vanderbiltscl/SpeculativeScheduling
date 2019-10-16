@@ -89,8 +89,6 @@ class WorkloadFit():
         handler = self.sequence_model(
             limits[0], limits[1], cdf, discret_samples=500)
         sequence = handler.compute_request_sequence()
-        if sequence[-1][0] != self.upper_limit:
-            sequence[-1] = (self.upper_limit, )
         if self.verbose:
             print(sequence)
         return sequence
