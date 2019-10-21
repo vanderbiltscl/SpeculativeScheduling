@@ -69,7 +69,7 @@ class TOptimalSequence(RequestSequence):
                 makespan += E_val[0]
                 self._E[j + 1] = E_val
 
-            if min_request == -1 or min_makespan >= makespan:
+            if min_request == -1 or min_makespan > makespan:
                 min_makespan = makespan
                 min_request = j
         return (min_makespan, min_request)
@@ -134,7 +134,7 @@ class TODiscretSequence(RequestSequence):
                 makespan += E_val[0]
                 self._E[j + 1] = E_val
 
-            if min_request == -1 or min_makespan >= makespan:
+            if min_request == -1 or min_makespan > makespan:
                 min_makespan = makespan
                 min_request = j
         return (min_makespan, min_request)
