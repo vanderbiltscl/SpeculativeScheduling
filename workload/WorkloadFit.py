@@ -161,16 +161,17 @@ class DistInterpolation(InterpolationModel):
         self.distr = list_of_distr
 
     def get_cdf(self, start, end, x, all_params):
-        if x >= end:
-            return 1
-        if x <= start:
-            return 0
         distribution = all_params[0]
         params = all_params[1]
         arg = params[:-2]
-        scale = distribution.cdf(end, loc=params[-2], scale=params[-1], *arg)
+        if x >= end:
+            return distribution.cdf(end, loc=params[-2],
+                                    scale=params[-1], *arg)
+        if x <= start:
+            return distribution.cdf(start, loc=params[-2],
+                                    scale=params[-1], *arg)
         return distribution.cdf(x, loc=params[-2], 
-                                scale=params[-1], *arg)/scale
+                                scale=params[-1], *arg)
 
 
     def get_best_fit(self, data, x, y): 
@@ -227,12 +228,14 @@ class PolyInterpolation(InterpolationModel):
         self.max_order = max_order
 
     def get_cdf(self, start, end, x, all_params):
+        params = all_params[1]
         if x >= end:
-            return 1
+            return integrate.quad(np.poly1d(params), start,
+                                  end, epsrel=1.49e-05)[0]
         if x <= start:
             return 0
-        params = all_params[1]
-        return integrate.quad(np.poly1d(params), start, x, epsrel=1.49e-05)[0]
+        return integrate.quad(np.poly1d(params), start,
+                              x, epsrel=1.49e-05)[0]
 
     def get_best_fit(self, data, x, y):
         best_err = np.inf
