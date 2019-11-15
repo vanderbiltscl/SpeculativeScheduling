@@ -91,6 +91,11 @@ class WorkloadCDF():
         self.best_fit_index = best_i
         return best_i
 
+    def get_interpolation_cdf(self, all_data):
+        if self.best_fit is None:
+            self.compute_best_fit()
+        return self.fit_model[self.best_fit_index].get_discrete_cdf(all_data)
+
 #-------------
 # Classes for defining how the interpolation will be done
 #-------------
@@ -129,9 +134,10 @@ class PolyInterpolation(InterpolationModel):
     def __init__(self, max_order=10):
         self.max_order = max_order
 
-    def get_interpolation_value(self, params, x):
-        # for now just return the function including the decreasing areas
-        return np.polyval(params, x)
+    def get_discrete_cdf(self, data):
+        all_data = np.unique(data)
+        all_cdf = [min(1,np.polyval(best_fit_poly[1], d)) for d in all_data]
+        return all_data, all_cdf
 
     def get_best_fit(self, x, y):
         empty = self.get_empty_fit()
