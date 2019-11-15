@@ -90,3 +90,119 @@ class WorkloadCDF():
         self.best_fit = best_fit
         self.best_fit_index = best_i
         return best_i
+
+#-------------
+# Classes for defining how the interpolation will be done
+#-------------
+
+class InterpolationModel():
+    # define the format of the return values for the get_best_fit functions
+    def get_empty_fit(self):
+        return (-1, -1, np.inf)
+
+
+class FunctionInterpolation(InterpolationModel):
+    # function could be any function that takes one parameter (e.g. log, sqrt)
+    def __init__(self, function, order=1):
+        self.fct = function
+        self.order = order
+
+    def get_interpolation_value(self, params, x):
+        # for now just return the function including the decreasing areas
+        return np.polyval(params, self.fct(x))
+
+    # fitting the function a + b * fct
+    def get_best_fit(self, x, y):
+        try:
+            params = np.polyfit(self.fct(x), y, self.order)
+        except:
+            return self.get_empty_fit()
+        err = np.sum((np.polyval(params, self.fct(x)) - y)**2)
+        return (self.order, params, err)
+    
+    def get_cdf(self, x, params):
+        return np.polyval(params, self.fct(x))
+
+
+class PolyInterpolation(InterpolationModel):
+
+    def __init__(self, max_order=10):
+        self.max_order = max_order
+
+    def get_interpolation_value(self, params, x):
+        # for now just return the function including the decreasing areas
+        return np.polyval(params, x)
+
+    def get_best_fit(self, x, y):
+        empty = self.get_empty_fit()
+        best_err = empty[2]
+        best_params = empty[1]
+        best_order = empty[0]
+        for order in range(1, self.max_order):
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")
+                try:
+                    params = np.polyfit(x, y, order)
+                except:
+                    break
+
+                err = np.sum((np.polyval(params, x) - y)**2)
+                if err < best_err:
+                    best_order = order
+                    best_params = params
+                    best_err = err
+        
+        return (best_order, best_params, best_err)
+
+
+class DistInterpolation(InterpolationModel):
+    def __init__(self, data, list_of_distr=[]):
+        self.distr = list_of_distr
+        self.data = data
+
+    def get_best_fit(self, x, y): 
+        dist_list = self.distr
+        if len(dist_list)==0:
+            # list of distributions to check
+            dist_list = [        
+                st.alpha,st.beta,st.cosine,st.dgamma,st.dweibull,st.exponnorm,
+                st.exponweib,st.exponpow,st.genpareto,st.gamma,st.halfnorm,
+                st.invgauss,st.invweibull,st.laplace,st.loggamma,st.lognorm,
+                st.lomax,st.maxwell,st.norm,st.pareto,st.pearson3,st.rayleigh,
+                st.rice,st.truncexpon,st.truncnorm,st.uniform,st.weibull_min,
+                st.weibull_max]
+
+        # Best holders
+        best_distribution = -1
+        best_params = (0.0, 1.0)
+        best_sse = np.inf
+
+        # estimate distribution parameters from data
+        for distribution in dist_list:
+            # Try to fit the distribution
+            try:
+                # Ignore warnings from data that can't be fit
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('ignore')
+
+                    # fit dist to data
+                    params = distribution.fit(self.data)
+
+                    # Separate parts of parameters
+                    arg = params[:-2]
+                    loc = params[-2]
+                    scale = params[-1]
+
+                    # Calculate fitted PDF and error with fit in distribution
+                    pdf = distribution.pdf(x, loc=loc, scale=scale, *arg)
+                    sse = np.sum(np.power(y - pdf, 2.0))
+
+                    # identify if this distribution is better
+                    if best_sse > sse > 0:
+                        best_distribution = distribution
+                        best_params = params
+                        best_sse = sse
+            except Exception:
+                pass
+
+        return (best_distribution, best_params, best_sse)
