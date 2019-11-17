@@ -91,10 +91,11 @@ class WorkloadCDF():
         self.best_fit_index = best_i
         return best_i
 
-    def get_interpolation_cdf(self, all_data):
+    def get_interpolation_cdf(self, all_data, best_fit):
         if self.best_fit is None:
             self.compute_best_fit()
-        return self.fit_model[self.best_fit_index].get_discrete_cdf(all_data)
+        return self.fit_model[self.best_fit_index].get_discrete_cdf(
+            all_data, best_fit)
 
 #-------------
 # Classes for defining how the interpolation will be done
