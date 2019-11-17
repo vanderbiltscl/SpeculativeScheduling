@@ -113,9 +113,14 @@ class FunctionInterpolation(InterpolationModel):
         self.fct = function
         self.order = order
 
-    def get_interpolation_value(self, params, x):
-        # for now just return the function including the decreasing areas
-        return np.polyval(params, self.fct(x))
+    def get_discrete_cdf(self, data, best_fit):
+        all_data = np.unique(data)
+        all_cdf = [max(0, min(1, np.polyval(best_fit, self.fct(d)))) for d in all_data]
+        # make sure the cdf is always increasing
+        for i in range(1,len(all_cdf)):
+            if all_cdf[i] < all_cdf[i-1]:
+                all_cdf[i] = all_cdf[i-1]
+        return all_data, all_cdf
 
     # fitting the function a + b * fct
     def get_best_fit(self, x, y):
