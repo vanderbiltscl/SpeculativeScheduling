@@ -140,9 +140,13 @@ class PolyInterpolation(InterpolationModel):
     def __init__(self, max_order=10):
         self.max_order = max_order
 
-    def get_discrete_cdf(self, data):
+    def get_discrete_cdf(self, data, best_fit):
         all_data = np.unique(data)
-        all_cdf = [min(1,np.polyval(best_fit_poly[1], d)) for d in all_data]
+        all_cdf = [max(0, min(1, np.polyval(best_fit, d))) for d in all_data]
+        # make sure the cdf is always increasing
+        for i in range(1,len(all_cdf)):
+            if all_cdf[i] < all_cdf[i-1]:
+                all_cdf[i] = all_cdf[i-1]
         return all_data, all_cdf
 
     def get_best_fit(self, x, y):
