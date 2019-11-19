@@ -175,6 +175,14 @@ class DistInterpolation(InterpolationModel):
     def __init__(self, data, list_of_distr=[]):
         self.distr = list_of_distr
         self.data = data
+    
+    def get_discrete_cdf(self, data, best_fit):
+        arg = best_fit[1][:-2]
+        loc = best_fit[1][-2]
+        scale = best_fit[1][-1]
+        all_data = np.unique(data)
+        all_cdf = [best_fit[0].cdf(d, loc=loc, scale=scale, *arg) for d in all_data]
+        return all_data, all_cdf
 
     def get_best_fit(self, x, y): 
         dist_list = self.distr
