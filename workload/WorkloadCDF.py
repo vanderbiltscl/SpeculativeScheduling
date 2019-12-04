@@ -67,7 +67,7 @@ class WorkloadCDF():
         for i in todel:
             del discret_data[i]
             del cdf[i]
-        cdf = [i * 1 / len(cdf) for i in cdf]
+        cdf = [i * 1. / len(cdf) for i in cdf]
         for i in range(1, len(cdf)):
             cdf[i] += cdf[i-1]
         # normalize the cdf
@@ -255,7 +255,6 @@ class LogDataCost(SequenceCost):
         for instance in data:
             # get the sum of all the values in the sequences <= walltime
             cost += sum([i for i in self.sequence if i < instance])
-            print(instance, cost)
             # add the first reservation that is >= current walltime
             idx = 0
             if len(self.sequence) > 1:
