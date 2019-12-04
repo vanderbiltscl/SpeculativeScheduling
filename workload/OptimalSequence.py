@@ -150,13 +150,13 @@ class TODiscretSequence(RequestSequence):
         for i in range(len(self.discret_values) - 1, first - 1, -1):
             if i in self._E:
                 continue
-            min_makespan = -1
-            min_request = -1
+            min_makespan = 0
+            min_request = len(self.discret_values)
             for j in range(i, len(self.discret_values)):
                 makespan = float(self.__sumF[i] * self.discret_values[j])
                 makespan += self._E[j + 1][0]
 
-                if min_request == -1 or min_makespan >= makespan:
+                if min_makespan == 0 or min_makespan >= makespan:
                     min_makespan = makespan
                     min_request = j
             self._E[i] = (min_makespan, min_request)
