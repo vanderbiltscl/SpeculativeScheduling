@@ -67,7 +67,7 @@ class WorkloadCDF():
         for i in todel:
             del discret_data[i]
             del cdf[i]
-        cdf = [i * 1 / len(cdf) for i in cdf]
+        cdf = [i * 1. / len(cdf) for i in cdf]
         for i in range(1, len(cdf)):
             cdf[i] += cdf[i-1]
         # normalize the cdf
@@ -175,6 +175,14 @@ class DistInterpolation(InterpolationModel):
     def __init__(self, data, list_of_distr=[]):
         self.distr = list_of_distr
         self.data = data
+    
+    def get_discrete_cdf(self, data, best_fit):
+        arg = best_fit[1][:-2]
+        loc = best_fit[1][-2]
+        scale = best_fit[1][-1]
+        all_data = np.unique(data)
+        all_cdf = [best_fit[0].cdf(d, loc=loc, scale=scale, *arg) for d in all_data]
+        return all_data, all_cdf
 
     def get_best_fit(self, x, y): 
         dist_list = self.distr
@@ -222,3 +230,39 @@ class DistInterpolation(InterpolationModel):
                 pass
 
         return (best_distribution, best_params, best_sse)
+
+
+#-------------
+# Classes for defining how the cost is computed
+#-------------
+
+class SequenceCost():
+    def compute_cost(self, data):
+        return -1
+
+class LogDataCost(SequenceCost):
+
+    def __init__(self, sequence):
+        # if entries in the sequence use a multi information format
+        # extract only the execution time
+        if not isinstance(sequence[0], tuple):
+            self.sequence = sequence
+        else:
+            self.sequence = [i[0] for i in sequence]
+
+    def compute_cost(self, data):
+        cost = 0
+        for instance in data:
+            # get the sum of all the values in the sequences <= walltime
+            cost += sum([i for i in self.sequence if i < instance])
+            # add the first reservation that is >= current walltime
+            idx = 0
+            if len(self.sequence) > 1:
+                idx_list = [i for i in range(1,len(self.sequence)) if
+                            self.sequence[i-1] < instance and
+                            self.sequence[i] >= instance]
+                if len(idx_list) > 0:
+                    idx = idx_list[0]
+            cost += self.sequence[idx]
+        cost = cost / len(data)
+        return cost

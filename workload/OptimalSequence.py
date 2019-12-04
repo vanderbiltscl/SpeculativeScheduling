@@ -113,10 +113,16 @@ class TODiscretSequence(RequestSequence):
         self.__t1 = self.discret_values[E_val[1]]
         self.__makespan = E_val[0]
 
+    def compute_F(self, vi):
+        fi = self.__prob[vi]
+        if vi > 0:
+            fi -= self.__prob[vi-1]
+        return fi / self.__prob[-1]
+
     def get_discret_sum_F(self):
         sumF = (len(self.discret_values) + 1) * [0]
         for k in range(len(self.discret_values) - 1, -1, -1):
-            sumF[k] = self.__prob[k] + sumF[k + 1]
+            sumF[k] = self.compute_F(k) + sumF[k + 1]
         return sumF
 
     def __compute_E_table(self, i):
@@ -144,13 +150,13 @@ class TODiscretSequence(RequestSequence):
         for i in range(len(self.discret_values) - 1, first - 1, -1):
             if i in self._E:
                 continue
-            min_makespan = -1
-            min_request = -1
+            min_makespan = 0
+            min_request = len(self.discret_values)
             for j in range(i, len(self.discret_values)):
                 makespan = float(self.__sumF[i] * self.discret_values[j])
                 makespan += self._E[j + 1][0]
 
-                if min_request == -1 or min_makespan >= makespan:
+                if min_makespan == 0 or min_makespan >= makespan:
                     min_makespan = makespan
                     min_request = j
             self._E[i] = (min_makespan, min_request)
