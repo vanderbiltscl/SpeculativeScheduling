@@ -143,39 +143,6 @@ class WorkloadFit():
             self.compute_best_fit()
         return self.best_fit
 
-
-class WorkloadFitCDF(WorkloadFit):
-    def set_workload(self, data, bins=None):
-        self.data = data
-        self.discrete_cdf = self.compute_discrete_cdf()
-
-    def compute_discrete_cdf(self):
-        assert (self.data is not None),\
-            'Data needs to be set to compute the discrete CDF'
-
-        discret_data = sorted(self.data)
-        cdf = [1 for _ in self.data]
-        todel = []
-        for i in range(len(self.data) - 1):
-            if discret_data[i] == discret_data[i + 1]:
-                todel.append(i)
-                cdf[i + 1] += cdf[i]
-        todel.sort(reverse=True)
-        for i in todel:
-            del discret_data[i]
-            del cdf[i]
-        cdf = [i * 1 / len(cdf) for i in cdf]
-        for i in range(1, len(cdf)):
-            cdf[i] += cdf[i-1]
-        # normalize the cdf
-        for i in range(len(cdf)):
-            cdf[i] /= cdf[-1]
-
-        return discret_data, cdf
-
-    def find_best_cdf_fit(self):
-        return -1
-
 #-------------
 # Classes for defining how the interpolation will be done
 #-------------
@@ -308,7 +275,7 @@ class LogDataCost(SequenceCost):
         cost = 0
         for instance in self.testing:
             # get the sum of all the values in the sequences <= walltime
-            cost += sum([i for i in sequence if i < instance])
+            cost += sum([i[0] for i in sequence if i[0] < instance])
             # add the first reservation that is >= current walltime
             idx = 0
             if len(sequence) > 1:
