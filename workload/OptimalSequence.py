@@ -54,6 +54,12 @@ class TOptimalSequence(RequestSequence):
     def get_optimal(self):
         return self.__makespan
 
+    def makespan_init_value(self, i, j):
+        init = float(self.__alpha * (self._a + self._delta * j) + self.__gamma) \
+               * self.__sumF[i + 1]
+        init += self.__beta * (self._a + self._delta * j) * self.__sumF[j + 1]
+        return init
+
     def __compute_E_table(self, i):
         if i == self._n + 1:
             return (0, self._n)
@@ -61,7 +67,7 @@ class TOptimalSequence(RequestSequence):
         min_makespan = -1
         min_request = -1
         for j in range(i, self._n + 1):
-            makespan = float(self.__sumF[i] * (self._a + self._delta * j))
+            makespan = makespan_init_value(i, j)
             if j + 1 in self._E:
                 makespan += self._E[j + 1][0]
             else:
