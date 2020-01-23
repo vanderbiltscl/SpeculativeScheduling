@@ -131,6 +131,12 @@ class TODiscretSequence(RequestSequence):
             sumF[k] = self.compute_F(k) + sumF[k + 1]
         return sumF
 
+    def makespan_init_value(self, i, j):
+        init = float(self.__alpha * self.discret_values[j] + self.__gamma) \
+               * self.__sumF[i + 1]
+        init += self.__beta * self.discret_values[j] * self.__sumF[j + 1]
+        return init
+
     def __compute_E_table(self, i):
         if i == len(self.discret_values):
             return (0, len(self.discret_values))
@@ -138,7 +144,7 @@ class TODiscretSequence(RequestSequence):
         min_makespan = -1
         min_request = -1
         for j in range(i, len(self.discret_values)):
-            makespan = float(self.__sumF[i] * self.discret_values[j])
+            makespan = makespan_init_value(i, j)
             if j + 1 in self._E:
                 makespan += self._E[j + 1][0]
             else:
