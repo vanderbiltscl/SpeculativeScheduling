@@ -238,6 +238,24 @@ class CheckpointSequence(RequestSequence):
         makespan += ((R + delta * self._C + self._delta * (j - ic) + start) * self._sumF[il])
         return makespan
 
+    def __compute_makespan(self, ic, il, j, R, delta):
+        makespan = 0
+        start = 0
+        if ic == 0:
+            start = self._a
+        new_ic = (1 - delta) * ic + delta * j
+        if (new_ic, j) in self._E:
+            makespan += self._E[(new_ic, j)][0]
+        else:
+            if self.always_checkpoint:
+                E_val = self.__compute_E_table_checkpoint(new_ic, j) 
+            else:
+                E_val = self.__compute_E_table(new_ic, j)
+            makespan += E_val[0]
+            self._E[(new_ic, j)] = E_val
+        makespan += ((R + delta * self._C + self._delta * (j - ic) + start) * self._sumF[il])
+        return makespan
+
     def __compute_E_table(self, ic, il):
         if il == self._n:
             return (0, self._n, 0)
