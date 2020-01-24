@@ -5,6 +5,9 @@ For all the functionalities see the examples in:
 - `example_compute_cost.ipynb`
 - `example_get_sequence.ipynb`
 
+For computing the sequence of requests (with or without checkpointing at the end), the following theorem is being used:
+![Sequence theorem](sequence_theorem.png)
+
 ## Find best fit functions
 
 Computes the cost of using discreet or continuous fits for a given dataset. 
