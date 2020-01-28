@@ -4,6 +4,7 @@ Extension of the ScheduleFlow Simulator (v1.0) to allow speculative request time
 ![Simulator workflow](docs/simulator_diagram.png)
 
 Teal modules are included in the ScheduleFlow Simulator. Orange modules are implemented in the current code.
+Additional logic is needed to fit a given past workload and create the requests for walltime submission (given by the HPCWalltime (v1.0) package).
 
 The python objects represent an extension of the classic reservation-based HPC schedulers by using speculation to determine the resource requirements of stochastic applications based on their past behavior. Specifically, we augment the existing HPC model by speculatively overwriting the request times (including the initial one and subsequent ones in case of failures) of an application during submission.
 
